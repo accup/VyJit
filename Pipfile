@@ -12,6 +12,7 @@ scipy = "*"
 librosa = "*"
 sounddevice = "*"
 aiohttp = "*"
+aiohttp-jinja2 = "*"
 
 [dev-packages]
 flake8 = "*"
