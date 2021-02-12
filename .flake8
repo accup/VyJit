@@ -1,0 +1,8 @@
+[flake8]
+exclude =
+    .git,
+    .vscode,
+    __pycache__,
+    _static,
+    _template
+max-complexity = 10
