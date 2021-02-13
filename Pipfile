@@ -13,6 +13,7 @@ librosa = "*"
 sounddevice = "*"
 aiohttp = "*"
 aiohttp-jinja2 = "*"
+python-socketio = "*"
 
 [dev-packages]
 flake8 = "*"
