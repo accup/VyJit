@@ -1,13 +1,14 @@
-{% extends 'layouts/base.html' %}
+{% extends 'layouts/analyzer.html' %}
 
-{% block title %}Index Page{% endblock %}
+{% block title %}Test{% endblock %}
 
-{% block content %}
+{% block visualizer %}
 <div>
     This is test page.
 </div>
+{% endblock %}
 
-<script src="https://cdn.socket.io/3.1.1/socket.io.min.js"></script>
+{% block listener %}
 <script>
     window.addEventListener('load', function (event) {
         let socket = io();
