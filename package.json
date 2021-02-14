@@ -1,0 +1,7 @@
+{
+    "name": "vyjit",
+    "version": "1.0.0",
+    "dependencies": {
+        "socket.io-client": "^3.1.1"
+    }
+}
