@@ -30,4 +30,6 @@ async def analysis(request: web.Request):
     )
 
 
+# Keep this order
+routes.static('/socket.io', 'node_modules/socket.io-client/dist')
 routes.static('/', '_static')
