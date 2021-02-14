@@ -6,6 +6,8 @@ from aiohttp import web
 import jinja2
 import aiohttp_jinja2
 
+import importlib
+
 import threading
 import asyncio
 
@@ -162,7 +164,9 @@ class AnalyzerRoutine:
             await runner.cleanup()
 
     async def handle_start_analysis(self, sid, name: str):
-        analyzer = analyzers.SUBMODULES[name].Analyzer()
+        analyzer_module = analyzers.SUBMODULES[name]
+        importlib.reload(analyzer_module)
+        analyzer = analyzer_module.Analyzer()
         data = analyzer.get_client_properties()
 
         async with self.analyzer_dict_lock:
