@@ -79,6 +79,127 @@ var analyzer;
         }
     }
 
+    /**
+     * @param typed {Int8Array|Uint8Array|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array}
+     */
+    function make_buffer(typed) {
+        if (typed instanceof Int8Array) {
+            return {
+                '_dtype': "int8",
+                '_buffer': typed.buffer,
+            }
+        } else if (typed instanceof Uint8Array) {
+            return {
+                '_dtype': "uint8",
+                '_buffer': typed.buffer,
+            }
+        } else if (typed instanceof Int16Array) {
+            const buffer = new ArrayBuffer(typed.byteLength);
+            const view = new DataView(buffer);
+            const length = typed.length;
+            for (let index = 0; index < length; ++index) {
+                const offset = index * Int16Array.BYTES_PER_ELEMENT;
+                view.setInt16(offset, typed[index], false);
+            }
+            return {
+                '_dtype': "int16",
+                '_buffer': buffer,
+            }
+        } else if (typed instanceof Uint16Array) {
+            const buffer = new ArrayBuffer(typed.byteLength);
+            const view = new DataView(buffer);
+            const length = typed.length;
+            for (let index = 0; index < length; ++index) {
+                const offset = index * Uint16Array.BYTES_PER_ELEMENT;
+                view.setUint16(offset, typed[index], false);
+            }
+            return {
+                '_dtype': "uint16",
+                '_buffer': buffer,
+            }
+        } else if (typed instanceof Int32Array) {
+            const buffer = new ArrayBuffer(typed.byteLength);
+            const view = new DataView(buffer);
+            const length = typed.length;
+            for (let index = 0; index < length; ++index) {
+                const offset = index * Int32Array.BYTES_PER_ELEMENT;
+                view.setInt32(offset, typed[index], false);
+            }
+            return {
+                '_dtype': "int32",
+                '_buffer': buffer,
+            }
+        } else if (typed instanceof Uint32Array) {
+            const buffer = new ArrayBuffer(typed.byteLength);
+            const view = new DataView(buffer);
+            const length = typed.length;
+            for (let index = 0; index < length; ++index) {
+                const offset = index * Uint32Array.BYTES_PER_ELEMENT;
+                view.setUint32(offset, typed[index], false);
+            }
+            return {
+                '_dtype': "uint32",
+                '_buffer': buffer,
+            }
+        } else if (typed instanceof Float32Array) {
+            const buffer = new ArrayBuffer(typed.byteLength);
+            const view = new DataView(buffer);
+            const length = typed.length;
+            for (let index = 0; index < length; ++index) {
+                const offset = index * Float32Array.BYTES_PER_ELEMENT;
+                view.setFloat32(offset, typed[index], false);
+            }
+            return {
+                '_dtype': "float32",
+                '_buffer': buffer,
+            }
+        } else if (typed instanceof Float64Array) {
+            const buffer = new ArrayBuffer(typed.byteLength);
+            const view = new DataView(buffer);
+            const length = typed.length;
+            for (let index = 0; index < length; ++index) {
+                const offset = index * Float64Array.BYTES_PER_ELEMENT;
+                view.setFloat64(offset, typed[index], false);
+            }
+            return {
+                '_dtype': "float64",
+                '_buffer': buffer,
+            }
+        } else {
+            throw new Error('Unknown typed array.');
+        }
+    }
+
+    function typed_to_bytes(typed) {
+        if (typeof typed == "object") {
+            if (typed instanceof Int8Array
+                || typed instanceof Uint8Array
+                || typed instanceof Int16Array
+                || typed instanceof Uint16Array
+                || typed instanceof Int32Array
+                || typed instanceof Uint32Array
+                || typed instanceof Float32Array
+                || typed instanceof Float64Array) {
+                return make_buffer(typed);
+            } else if (typed instanceof ArrayBuffer) {
+                return typed;
+            } else if (Array.isArray(typed)) {
+                return typed.map(typed_to_bytes);
+            } else {
+                if ('_dtype' in typed) {
+                    throw new Error("Illegal property '_dtype'.");
+                }
+                const data = {};
+                for (const prop in typed) {
+                    data[prop] = typed_to_bytes(typed[prop]);
+                }
+                return data;
+            }
+        } else {
+            return typed;
+        }
+    }
+
     function bytes_to_typed(data) {
         if (typeof data == "object") {
             if (data instanceof ArrayBuffer) {
@@ -100,6 +221,7 @@ var analyzer;
     }
 
     let target = new EventTarget();
+    let socket = null;
     analyzer = {
         /**
          * @param event {string}
@@ -112,17 +234,36 @@ var analyzer;
         },
 
         /**
+         * 
+         * @param {Object.<string, any>} properties 
+         */
+        setProperties(properties) {
+            if (socket == null) {
+                throw new Error('Not connected to an analyzer.');
+            }
+
+            socket.emit('set_properties', typed_to_bytes(properties));
+        },
+
+        /**
          * @param analyzer_name {string}
          */
         connect(analyzer_name) {
-            let socket = io();
+            if (socket != null) {
+                throw new Error('Already connected to the analyzer.');
+            }
+
+            socket = io();
             socket.on('connect', function () {
                 socket.emit('start_analysis', analyzer_name);
             });
+            socket.on('disconnect', function () {
+                socket = null;
+            });
             socket.on('properties', function (data) {
-                // target.dispatchEvent(new CustomEvent('properties', {
-                //     detail: bytes_to_typed(data),
-                // }));
+                target.dispatchEvent(new CustomEvent('properties', {
+                    detail: bytes_to_typed(data),
+                }));
             });
             socket.on('results', function (data) {
                 target.dispatchEvent(new CustomEvent('results', {
