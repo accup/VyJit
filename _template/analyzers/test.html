@@ -3,28 +3,14 @@
 {% block title %}Test{% endblock %}
 
 {% block visualizer %}
-<div>
-    This is test page.
-</div>
+<div id="size"></div>
 {% endblock %}
 
 {% block listener %}
 <script>
-    window.addEventListener('load', function (event) {
-        let socket = io();
-        socket.on('connect', function () {
-            console.log('Connect', socket.id);
-            socket.emit('start_analysis', 'test');
-        });
-        socket.on('disconnect', function () {
-            console.log('Disconnect', socket.id);
-        });
-        socket.on('properties', function (data) {
-            console.log('Properties', data);
-        });
-        socket.on('results', function (data) {
-            console.log('Results', data);
-        });
+    analyzer.on('results', function (data) {
+        console.log(data);
+        document.getElementById('size').textContent = data.size;
     });
 </script>
 {% endblock %}

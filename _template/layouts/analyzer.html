@@ -6,29 +6,9 @@
 {% block visualizer %}{% endblock %}
 
 <script src="https://cdn.socket.io/3.1.1/socket.io.min.js"></script>
+<script src="/js/analyzer.js"></script>
 <script>
-    class Analyzer extends EventTarget {
-        constructor() {
-            super();
-        }
-    };
-    var analyzer = new Analyzer;
-    {
-        let socket = io();
-        socket.on('connect', function () {
-            console.log('Connect', socket.id);
-            socket.emit('start_analysis', '{{ analyzer_name }}');
-        });
-        socket.on('disconnect', function () {
-            console.log('Disconnect', socket.id);
-        });
-        socket.on('properties', function (data) {
-            console.log('Properties', data);
-        });
-        socket.on('results', function (data) {
-            console.log('Results', data);
-        });
-    }
+    analyzer.connect('{{ analyzer_name }}');
 </script>
 {% block listener %}{% endblock %}
 {% endblock %}
