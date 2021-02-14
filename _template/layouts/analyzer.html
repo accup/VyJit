@@ -5,7 +5,7 @@
 {% block content %}
 {% block visualizer %}{% endblock %}
 
-<script src="https://cdn.socket.io/3.1.1/socket.io.min.js"></script>
+<script src="/socket.io/socket.io.min.js"></script>
 <script src="/js/analyzer.js"></script>
 <script>
     analyzer.connect('{{ analyzer_name }}');
