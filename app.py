@@ -166,16 +166,13 @@ class AnalyzerRoutine:
         data = analyzer.get_client_properties()
 
         async with self.analyzer_dict_lock:
-            print(sid)
             self.analyzer_dict[sid] = asyncio.Lock(), analyzer
 
         await self.sio.emit('properties', data, room=sid)
 
     async def handle_disconnect(self, sid):
         async with self.analyzer_dict_lock:
-            print(
-                self.analyzer_dict.pop(sid, None)
-            )
+            self.analyzer_dict.pop(sid)
 
     async def handle_set_properties(
         self,
