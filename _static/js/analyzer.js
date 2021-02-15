@@ -172,7 +172,9 @@ var analyzer;
 
     function typed_to_bytes(typed) {
         if (typeof typed == "object") {
-            if (typed instanceof Int8Array
+            if (typed === null) {
+                return null;
+            } else if (typed instanceof Int8Array
                 || typed instanceof Uint8Array
                 || typed instanceof Int16Array
                 || typed instanceof Uint16Array
@@ -202,7 +204,9 @@ var analyzer;
 
     function bytes_to_typed(data) {
         if (typeof data == "object") {
-            if (data instanceof ArrayBuffer) {
+            if (data === null) {
+                return null;
+            } else if (data instanceof ArrayBuffer) {
                 return data;
             } else if (Array.isArray(data)) {
                 return data.map(bytes_to_typed);
