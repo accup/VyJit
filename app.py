@@ -60,6 +60,8 @@ class AnalyzerRoutine:
         )
 
         self.skip: bool = args.skip
+        self.queue_info_lock = asyncio.Lock()
+        self.queue_info = {'get': 0, 'skip': 0}
         self.analyzer_dict: Dict[web.WebSocketResponse,
                                  Tuple[asyncio.Lock, BaseAnalyzer]] = dict()
 
@@ -84,11 +86,12 @@ class AnalyzerRoutine:
         else:
             raise ValueError("Unknown property name {!r}.".format(name))
 
-    def _put_indata(self, indata: np.ndarray):
-        try:
-            self.indata_queue.put_nowait(indata)
-        except asyncio.QueueFull:
-            print('Skipped')
+    async def _put_indata(self, indata: np.ndarray):
+        async with self.queue_info_lock:
+            try:
+                self.indata_queue.put_nowait(indata)
+            except asyncio.QueueFull:
+                self.queue_info['skip'] += 1
 
     def _input_stream_callback(self, indata: np.ndarray, frames, time, status):
         with self.indata_cache_lock:
@@ -98,7 +101,28 @@ class AnalyzerRoutine:
             y[:y.shape[0] - w, :] = y[w:, :]
             y[y.shape[0] - w:, :] = x[x.shape[0] - w:, :]
 
-            self.loop.call_soon_threadsafe(self._put_indata, np.copy(y))
+            asyncio.run_coroutine_threadsafe(
+                self._put_indata(np.copy(y)),
+                loop=self.loop,
+            )
+
+    async def display_queue_info(self):
+        while True:
+            async with self.queue_info_lock:
+                print(
+                    '\r{} blocks queued, '
+                    '{} blocks skipped, '
+                    '{} blocks analyzed.'.format(
+                        self.indata_queue.qsize(),
+                        self.queue_info['skip'],
+                        self.queue_info['get'],
+                    ),
+                    end='',
+                    flush=True,
+                )
+                self.queue_info['get'] = 0
+                self.queue_info['skip'] = 0
+            await asyncio.sleep(2.0)
 
     async def analysis_coroutine(self):
         while True:
@@ -119,6 +143,8 @@ class AnalyzerRoutine:
                         data=results,
                         room=sid,
                     )
+                except KeyboardInterrupt:
+                    raise
                 except Exception:
                     await self.sio.emit(
                         'internal_error',
@@ -126,6 +152,9 @@ class AnalyzerRoutine:
                         room=sid,
                     )
                     await self.sio.disconnect(sid)
+
+            async with self.queue_info_lock:
+                self.queue_info['get'] += 1
 
     def main(self):
         try:
@@ -170,7 +199,10 @@ class AnalyzerRoutine:
                 channels=self.channels,
                 callback=self._input_stream_callback,
             ):
-                await self.analysis_coroutine()
+                await asyncio.gather(
+                    self.display_queue_info(),
+                    self.analysis_coroutine(),
+                )
         finally:
             await runner.cleanup()
 
