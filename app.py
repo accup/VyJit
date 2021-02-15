@@ -128,7 +128,10 @@ class AnalyzerRoutine:
                     await self.sio.disconnect(sid)
 
     def main(self):
-        asyncio.run(self.main_coroutine())
+        try:
+            asyncio.run(self.main_coroutine())
+        except KeyboardInterrupt:
+            pass
 
     async def main_coroutine(self):
         self.loop = asyncio.get_event_loop()
