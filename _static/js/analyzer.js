@@ -238,7 +238,6 @@ var analyzer;
         },
 
         /**
-         * 
          * @param {Object.<string, any>} properties 
          */
         setProperties(properties) {
@@ -261,17 +260,19 @@ var analyzer;
             socket.on('connect', function () {
                 socket.emit('start_analysis', analyzer_name);
             });
-            socket.on('disconnect', function () {
-                socket = null;
-            });
             socket.on('properties', function (data) {
                 target.dispatchEvent(new CustomEvent('properties', {
-                    detail: bytes_to_typed(data),
+                    detail: bytes_to_typed(data)
                 }));
             });
             socket.on('results', function (data) {
                 target.dispatchEvent(new CustomEvent('results', {
-                    detail: bytes_to_typed(data),
+                    detail: bytes_to_typed(data)
+                }));
+            });
+            socket.on('internal_error', function (data) {
+                target.dispatchEvent(new CustomEvent('error', {
+                    detail: bytes_to_typed(data)
                 }));
             });
         }

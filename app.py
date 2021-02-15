@@ -12,6 +12,7 @@ import threading
 import asyncio
 
 import sys
+import traceback
 
 from _lib.analyzer import BaseAnalyzer
 from _lib.util import numpy_to_bytes
@@ -109,14 +110,22 @@ class AnalyzerRoutine:
                 items = list(self.analyzer_dict.items())
 
             for sid, (lock, analyzer) in items:
-                async with lock:
-                    results = analyzer.analyze(indata)
+                try:
+                    async with lock:
+                        results = analyzer.analyze(indata)
                     results = numpy_to_bytes(results)
                     await self.sio.emit(
                         'results',
                         data=results,
                         room=sid,
                     )
+                except Exception:
+                    await self.sio.emit(
+                        'internal_error',
+                        data=traceback.format_exc(),
+                        room=sid,
+                    )
+                    await self.sio.disconnect(sid)
 
     def main(self):
         asyncio.run(self.main_coroutine())
@@ -174,7 +183,7 @@ class AnalyzerRoutine:
 
     async def handle_disconnect(self, sid):
         async with self.analyzer_dict_lock:
-            self.analyzer_dict.pop(sid)
+            self.analyzer_dict.pop(sid, None)
 
     async def handle_set_properties(
         self,
@@ -182,6 +191,8 @@ class AnalyzerRoutine:
         properties: dict,
     ):
         async with self.analyzer_dict_lock:
+            if sid not in self.analyzer_dict:
+                return
             lock, analyzer = self.analyzer_dict[sid]
 
         async with lock:
