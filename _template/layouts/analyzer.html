@@ -2,13 +2,137 @@
 
 {% block title %}{{ analyzer_name | safe }}{% endblock %}
 
-{% block content %}
-{% block visualizer %}{% endblock %}
+{% block head %}
+<link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+{% endblock %}
 
+{% block content %}
+<div id="container" class="container-fluid">
+    {% block control_panel %}
+    <div id="control_panel" class="mb-3">
+    </div>
+    <template id="template_control_text">
+        <div class="form-floating">
+            <input class="form-control" type="text">
+            <label class="form-label"></label>
+        </div>
+    </template>
+    <template id="template_control_number">
+        <div class="form-floating">
+            <input class="form-control" type="number">
+            <label class="form-label"></label>
+        </div>
+    </template>
+    <template id="template_control_boolean">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox">
+            <label class="form-check-label"></label>
+        </div>
+    </template>
+    {% endblock %}
+
+    {% block visualizer %}{% endblock %}
+</div>
+
+<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="/socket.io/socket.io.min.js"></script>
 <script src="/js/analyzer.js"></script>
 <script>
-    analyzer.connect('{{ analyzer_name }}');
+    (function () {
+        /**
+         * @param template_id {string}
+         * @param property_name {string}
+         */
+        function createControl(template_id, property_name) {
+            const template = document.getElementById(template_id);
+            const control = template.content.firstElementChild.cloneNode(true);
+            const label = control.querySelector('label');
+            const input = control.querySelector('input');
+            const id = 'property_control_input_' + property_name;
+            label.htmlFor = id;
+            input.id = id;
+            return control;
+        }
+        /**
+         * @param property_name {string}
+         * @param value_type {string}
+         */
+        function getControl(property_name, value_type) {
+            const controlPanel = document.getElementById('control_panel');
+            const controlId = 'property_control_' + property_name;
+            let control = controlPanel.querySelector('#' + controlId);
+            if (control == null) {
+                /**
+                 * @param target {HTMLInputElement}
+                 * @returns {string|number|null}
+                 */
+                let value_getter = target => target.value;
+                switch (value_type) {
+                    case "string":
+                        control = createControl('template_control_text', property_name);
+                        break;
+                    case "number":
+                        control = createControl('template_control_number', property_name);
+                        value_getter = target => {
+                            const value = target.valueAsNumber;
+                            if (isNaN(value)) {
+                                return null;
+                            } else {
+                                return value;
+                            }
+                        }
+                        break;
+                    case "boolean":
+                        control = createControl('template_control_boolean', property_name);
+                        value_getter = target => target.checked;
+                        break;
+                    default:
+                        throw new Error("Invalid property type.");
+                }
+                control.id = controlId;
+                setControlLabel(control, property_name);
+                control.addEventListener('change', function (event) {
+                    const value = value_getter(event.target);
+                    const properties = {};
+                    properties[property_name] = value;
+                    analyzer.setProperties(properties);
+                });
+                controlPanel.appendChild(control);
+            }
+            return control;
+        }
+        /**
+         * @param control {HTMLElement}
+         * @param label {string}
+         */
+        function setControlLabel(control, label) {
+            control.querySelector('label').textContent = label;
+        }
+        /**
+         * @param control {HTMLElement}
+         * @param value {number|string}
+         */
+        function setControlValue(control, value) {
+            control.querySelector('input').value = value;
+        }
+
+
+        analyzer.connect('{{ analyzer_name }}');
+        analyzer.on('properties', function (properties) {
+            for (const property_name in properties) {
+                const value = properties[property_name];
+                let control = getControl(property_name, typeof value);
+                setControlValue(control, value);
+            }
+        });
+        analyzer.on('error', function (message) {
+            const pre = document.createElement('pre');
+            pre.textContent = message;
+
+            const container = document.getElementById('container');
+            container.insertBefore(pre, container.firstChild);
+        });
+    })();
 </script>
 {% block listener %}{% endblock %}
 {% endblock %}
