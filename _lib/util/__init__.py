@@ -1,10 +1,10 @@
 from .convert import numpy_to_bytes, bytes_to_numpy
-from .submodule import import_submodules
+from .submodule import list_submodules
 
 
 __all__ = [
     'numpy_to_bytes',
     'bytes_to_numpy',
 
-    'import_submodules',
+    'list_submodules',
 ]

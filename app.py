@@ -20,8 +20,6 @@ from argparse import ArgumentParser, Namespace, ArgumentDefaultsHelpFormatter
 
 from typing import Optional, Tuple, Dict, Sequence
 
-import analyzers
-
 
 class AnalyzerRoutine:
     def define_parser(self, parser: ArgumentParser):
@@ -164,8 +162,8 @@ class AnalyzerRoutine:
             await runner.cleanup()
 
     async def handle_start_analysis(self, sid, name: str):
-        analyzer_module = analyzers.SUBMODULES[name]
-        importlib.reload(analyzer_module)
+        analyzer_module_name = 'analyzers.{}'.format(name)
+        analyzer_module = importlib.import_module(analyzer_module_name)
         analyzer = analyzer_module.Analyzer()
         data = analyzer.get_client_properties()
 
@@ -188,6 +186,8 @@ class AnalyzerRoutine:
 
         async with lock:
             for name, value in properties.items():
+                if value is None:
+                    continue
                 setattr(
                     analyzer,
                     type(analyzer)._properties[name],
