@@ -152,8 +152,9 @@ class AnalyzerRoutine:
         host = 'localhost'
         port = 8080
         print('Launch at http://{}:{}'.format(host, port))
+        print('Press Ctrl+C to quit.')
         if self.skip:
-            print('Overflowed segments will be skipped.')
+            print('* Overflowed segments will be skipped.')
 
         runner = web.AppRunner(app)
         await runner.setup()
