@@ -1,5 +1,4 @@
 import numpy as np
-import sounddevice as sd
 
 import socketio
 from aiohttp import web
@@ -8,14 +7,12 @@ import aiohttp_jinja2
 
 import importlib
 
-import threading
 import asyncio
 
 import sys
-import traceback
 
 from _lib.analyzer import BaseAnalyzer
-from _lib.util import numpy_to_bytes
+import _lib.coroutine as coroutine
 
 from argparse import ArgumentParser, Namespace, ArgumentDefaultsHelpFormatter
 
@@ -35,8 +32,8 @@ class AnalyzerRoutine:
             help='the number of signal channels',
         )
         parser.add_argument(
-            '--default-time-step', type=int,
-            default=2048,
+            '--default-frame-step', type=int,
+            default=0,
             help='default signal clipping interval in samples',
         )
         parser.add_argument(
@@ -51,60 +48,38 @@ class AnalyzerRoutine:
 
     def setup(self, args: Namespace):
         self.sample_rate: float = args.sample_rate
-        self.channels = args.channels
-
-        self.indata_cache_lock = threading.Lock()
-        self.indata_cache = np.zeros(
-            (args.default_window_size, self.channels),
-            dtype=np.float32,
-        )
+        self.channels: int = args.channels
+        self.window_size: int = args.default_window_size
+        self.frame_step: int = args.default_frame_step
 
         self.skip: bool = args.skip
         self.queue_info_lock = asyncio.Lock()
         self.queue_info = {'get': 0, 'skip': 0}
-        self.analyzer_dict: Dict[web.WebSocketResponse,
+        self.analyzer_dict: Dict[str,
                                  Tuple[asyncio.Lock, BaseAnalyzer]] = dict()
 
-    def _reshape_indata_cache(self, window_size: int):
-        with self.indata_cache_lock:
-            x = self.indata_cache
-            y = np.zeros((window_size, self.channels), dtype=np.float32)
-            w = min(x.shape[0], y.shape[0])
-            y[y.shape[0] - w:, :] = x[x.shape[0] - w:, :]
-            self.indata_cache = y
-
-    def get_property(self, name: str):
-        if name == 'window_size':
-            with self.indata_cache_lock:
-                return self.indata_cache.shape[0]
-        else:
-            raise ValueError("Unknown property name {!r}.".format(name))
-
-    def set_property(self, name: str, value):
-        if name == 'window_size':
-            self._reshape_indata_cache(value)
-        else:
-            raise ValueError("Unknown property name {!r}.".format(name))
-
-    async def _put_indata(self, indata: np.ndarray):
+    async def _put_buffer(self, indata: np.ndarray):
         async with self.queue_info_lock:
             try:
                 self.indata_queue.put_nowait(indata)
             except asyncio.QueueFull:
                 self.queue_info['skip'] += 1
 
-    def _input_stream_callback(self, indata: np.ndarray, frames, time, status):
-        with self.indata_cache_lock:
-            x = indata
-            y = self.indata_cache
-            w = min(y.shape[0], x.shape[0])
-            y[:y.shape[0] - w, :] = y[w:, :]
-            y[y.shape[0] - w:, :] = x[x.shape[0] - w:, :]
+    async def _get_buffer(self):
+        buffer = await self.indata_queue.get()
+        if buffer is not None:
+            async with self.queue_info_lock:
+                self.queue_info['get'] += 1
+        return buffer
 
-            asyncio.run_coroutine_threadsafe(
-                self._put_indata(np.copy(y)),
-                loop=self.loop,
-            )
+    async def _get_sid_results_pairs(self, buffer: np.ndarray):
+        async with self.analyzer_dict_lock:
+            items = list(self.analyzer_dict.items())
+
+        for sid, (lock, analyzer) in items:
+            async with lock:
+                results = analyzer.analyze(buffer)
+            yield sid, results
 
     async def display_queue_info(self):
         while True:
@@ -124,38 +99,6 @@ class AnalyzerRoutine:
                 self.queue_info['skip'] = 0
             await asyncio.sleep(2.0)
 
-    async def analysis_coroutine(self):
-        while True:
-            indata = await self.indata_queue.get()
-            if indata is None:
-                break
-
-            async with self.analyzer_dict_lock:
-                items = list(self.analyzer_dict.items())
-
-            for sid, (lock, analyzer) in items:
-                try:
-                    async with lock:
-                        results = analyzer.analyze(indata)
-                    results = numpy_to_bytes(results)
-                    await self.sio.emit(
-                        'results',
-                        data=results,
-                        room=sid,
-                    )
-                except KeyboardInterrupt:
-                    raise
-                except Exception:
-                    await self.sio.emit(
-                        'internal_error',
-                        data=traceback.format_exc(),
-                        room=sid,
-                    )
-                    await self.sio.disconnect(sid)
-
-            async with self.queue_info_lock:
-                self.queue_info['get'] += 1
-
     def main(self):
         try:
             asyncio.run(self.main_coroutine())
@@ -163,7 +106,8 @@ class AnalyzerRoutine:
             pass
 
     async def main_coroutine(self):
-        self.loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop()
+        event = asyncio.Event()
         self.indata_queue = asyncio.Queue(1 if self.skip else 0)
         self.analyzer_dict_lock = asyncio.Lock()
 
@@ -193,17 +137,35 @@ class AnalyzerRoutine:
         site = web.TCPSite(runner, host, port)
         await site.start()
 
-        try:
-            with sd.InputStream(
-                samplerate=self.sample_rate,
+        input_task = loop.create_task(
+            coroutine.signal_input(
+                loop=loop,
+                event=event,
+                put_buffer=self._put_buffer,
+                sample_rate=self.sample_rate,
                 channels=self.channels,
-                callback=self._input_stream_callback,
-            ):
-                await asyncio.gather(
-                    self.display_queue_info(),
-                    self.analysis_coroutine(),
-                )
+                window_size=self.window_size,
+                block_size=self.frame_step,
+                device=None,
+                dtype=np.float32,
+            )
+        )
+        analysis_task = loop.create_task(
+            coroutine.signal_analysis(
+                sio=self.sio,
+                get_buffer=self._get_buffer,
+                get_sid_results_pairs=self._get_sid_results_pairs,
+            )
+        )
+
+        try:
+            await self.display_queue_info()
         finally:
+            while not self.indata_queue.empty():
+                self.indata_queue.get_nowait()
+            await self.indata_queue.put(None)
+            event.set()
+            await asyncio.wait([input_task, analysis_task])
             await runner.cleanup()
 
     async def handle_start_analysis(self, sid, name: str):

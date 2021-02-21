@@ -1,5 +1,19 @@
 import numpy as np
 
+from typing import Union, Tuple, List, Dict
+
+
+ConvertibleType = Union[
+    int, float, str, bytes, np.ndarray,
+    Tuple['ConvertibleType'], List['ConvertibleType'],
+    Dict[str, 'ConvertibleType'],
+]
+PortableType = Union[
+    int, float, str, bytes,
+    Tuple['PortableType'], List['PortableType'],
+    Dict[str, 'PortableType'],
+]
+
 
 DTYPE_JSTYPE_MAP = {
     np.dtype(np.int8): 'int8',
@@ -17,7 +31,7 @@ JSTYPE_DTYPE_MAP = {
 }
 
 
-def numpy_to_bytes(data):
+def numpy_to_bytes(data: ConvertibleType) -> PortableType:
     """Convert contained numpy array to data-type info and bytes.
     """
     if isinstance(data, dict):
@@ -28,6 +42,11 @@ def numpy_to_bytes(data):
             key: numpy_to_bytes(value)
             for key, value in data.items()
         }
+    elif isinstance(data, tuple):
+        return tuple(
+            numpy_to_bytes(value)
+            for value in data
+        )
     elif isinstance(data, list):
         return [
             numpy_to_bytes(value)
@@ -48,7 +67,7 @@ def numpy_to_bytes(data):
         return data
 
 
-def bytes_to_numpy(data):
+def bytes_to_numpy(data: PortableType) -> ConvertibleType:
     """Convert contained data-type info and bytes to numpy array.
     """
     if isinstance(data, dict):
@@ -65,6 +84,11 @@ def bytes_to_numpy(data):
                 key: bytes_to_numpy(value)
                 for key, value in data.items()
             }
+    elif isinstance(data, tuple):
+        return tuple(
+            bytes_to_numpy(value)
+            for value in data
+        )
     elif isinstance(data, list):
         return [
             bytes_to_numpy(value)
