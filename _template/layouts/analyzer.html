@@ -3,7 +3,7 @@
 {% block title %}{{ analyzer_name | safe }}{% endblock %}
 
 {% block head %}
-<link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+<script src="/dist/bundle.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -34,9 +34,6 @@
     {% block visualizer %}{% endblock %}
 </div>
 
-<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="/socket.io/socket.io.min.js"></script>
-<script src="/js/analyzer.js"></script>
 <script>
     (function () {
         /**
