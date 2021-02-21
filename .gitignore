@@ -5,5 +5,8 @@ __pycache__/
 # Node
 node_modules/
 
+# Webpack
+dist/
+
 # Visual Studio Code
 .vscode/
