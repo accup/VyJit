@@ -5,11 +5,10 @@ from aiohttp import web
 import jinja2
 import aiohttp_jinja2
 
-import importlib
-
-import asyncio
-
 import sys
+import asyncio
+import importlib
+import traceback
 
 from _lib.analyzer import BaseAnalyzer
 import _lib.coroutine as coroutine
@@ -170,14 +169,21 @@ class AnalyzerRoutine:
 
     async def handle_start_analysis(self, sid, name: str):
         analyzer_module_name = 'analyzers.{}'.format(name)
-        analyzer_module = importlib.import_module(analyzer_module_name)
-        analyzer = analyzer_module.Analyzer()
-        data = analyzer.get_client_properties()
+        try:
+            analyzer_module = importlib.import_module(analyzer_module_name)
+            analyzer = analyzer_module.Analyzer()
+            data = analyzer.get_client_properties()
 
-        async with self.analyzer_dict_lock:
-            self.analyzer_dict[sid] = asyncio.Lock(), analyzer
+            async with self.analyzer_dict_lock:
+                self.analyzer_dict[sid] = asyncio.Lock(), analyzer
 
-        await self.sio.emit('properties', data, room=sid)
+            await self.sio.emit('properties', data, room=sid)
+        except Exception:
+            await self.sio.emit(
+                'internal_error',
+                traceback.format_exc(),
+                room=sid,
+            )
 
     async def handle_disconnect(self, sid):
         async with self.analyzer_dict_lock:
