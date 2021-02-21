@@ -1,6 +1,7 @@
 {
     "name": "vyjit",
     "version": "1.0.0",
+    "private": true,
     "dependencies": {
         "bootstrap": "^5.0.0-beta2",
         "d3": "^6.5.0",
