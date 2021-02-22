@@ -18,11 +18,12 @@ export class PseudoColorRenderer implements Renderer<Float32Array | Float64Array
         color_map: ColorMap,
     ) {
         this._canvas = canvas;
-        this._ctx = this._canvas.getContext('2d');
+        this._ctx = this._canvas.getContext('2d')!;
         this._nFrames = n_frames;
         this._colorMap = color_map;
 
         this._frame = this._nFrames - 1;
+        this._data = new Float32Array();
 
         this._init();
     }
