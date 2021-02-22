@@ -5,6 +5,8 @@ from typing import Union, Tuple, List, Dict
 
 ConvertibleType = Union[
     int, float, str, bytes, np.ndarray,
+    np.int8, np.uint8, np.int16, np.uint16,
+    np.int32, np.uint32, np.float32, np.float64,
     Tuple['ConvertibleType'], List['ConvertibleType'],
     Dict[str, 'ConvertibleType'],
 ]
@@ -63,8 +65,10 @@ def numpy_to_bytes(data: ConvertibleType) -> PortableType:
             '_dtype': jstype,
             '_buffer': data.tobytes(),
         }
-    else:
+    elif isinstance(data, (int, float, str)):
         return data
+    else:
+        return data.item()
 
 
 def bytes_to_numpy(data: PortableType) -> ConvertibleType:

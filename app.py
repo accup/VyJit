@@ -77,7 +77,7 @@ class AnalyzerRoutine:
 
         for sid, (lock, analyzer) in items:
             async with lock:
-                results = analyzer.analyze(buffer)
+                results = analyzer.analyze(np.copy(buffer))
             yield sid, results
 
     async def display_queue_info(self):
