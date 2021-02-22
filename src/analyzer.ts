@@ -257,7 +257,7 @@ export default {
 
         socket = io();
         socket.on('connect', function () {
-            socket.emit('start_analysis', analyzer_name);
+            socket!.emit('start_analysis', analyzer_name);
         });
         socket.on('properties', function (data: PortableType) {
             target.dispatchEvent(new CustomEvent('properties', {
