@@ -1,2 +1,2 @@
-declare var analyzer: typeof import('./js/analyzer');
-declare var r6r: typeof import('./js/canvas-renderer');
+declare var analyzer: typeof import('./src/analyzer').default;
+declare var r6r: typeof import('./src/canvas-renderer');

@@ -1,8 +1,16 @@
-/**
- * @param dtype {string}
- * @param buffer {ArrayBuffer}
- */
-function make_typed(dtype, buffer) {
+import { io, Socket } from 'socket.io-client';
+
+
+type TypedArray = Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array;
+interface PortableTypedArray {
+    _dtype: string;
+    _buffer: ArrayBuffer;
+};
+type ConvertibleType = null | number | string | TypedArray | ArrayBuffer | ConvertibleType[] | { [key: string]: ConvertibleType };
+type PortableType = null | number | string | PortableTypedArray | ArrayBuffer | PortableType[] | { [key: string]: PortableType };
+
+
+function make_typed(dtype: string, buffer: ArrayBuffer) {
     switch (dtype) {
         case "int8": {
             return new Int8Array(buffer);
@@ -76,10 +84,8 @@ function make_typed(dtype, buffer) {
     }
 }
 
-/**
- * @param typed {Int8Array|Uint8Array|Int16Array|Uint16Array|Int32Array|Uint32Array|Float32Array|Float64Array}
- */
-function make_buffer(typed) {
+
+function make_buffer(typed: TypedArray) {
     if (typed instanceof Int8Array) {
         return {
             '_dtype': "int8",
@@ -167,7 +173,7 @@ function make_buffer(typed) {
     }
 }
 
-function typed_to_bytes(typed) {
+function typed_to_bytes(typed: ConvertibleType): PortableType {
     if (typeof typed == "object") {
         if (typed === null) {
             return null;
@@ -199,7 +205,11 @@ function typed_to_bytes(typed) {
     }
 }
 
-function bytes_to_typed(data) {
+function instanceofPortableTypedArray(data: any): data is PortableTypedArray {
+    return '_dtype' in data;
+}
+
+function bytes_to_typed(data: PortableType): ConvertibleType {
     if (typeof data == "object") {
         if (data === null) {
             return null;
@@ -207,8 +217,8 @@ function bytes_to_typed(data) {
             return data;
         } else if (Array.isArray(data)) {
             return data.map(bytes_to_typed);
-        } else if ('_dtype' in data) {
-            return make_typed(data['_dtype'], data['_buffer']);
+        } else if (instanceofPortableTypedArray(data)) {
+            return make_typed(data._dtype, data._buffer);
         } else {
             const typed = {};
             for (const prop in data) {
@@ -222,23 +232,17 @@ function bytes_to_typed(data) {
 }
 
 const target = new EventTarget();
-let socket = null;
+let socket: null | Socket = null;
 
-module.exports = {
-    /**
-     * @param event {string}
-     * @param listener {(data: any) => void}
-     */
-    on(event, listener) {
-        target.addEventListener(event, function (event) {
+
+export default {
+    on(event: string, listener: (data: any) => void) {
+        target.addEventListener(event, function (event: CustomEvent) {
             listener(event.detail);
         });
     },
 
-    /**
-     * @param {Object.<string, any>} properties 
-     */
-    setProperties(properties) {
+    setProperties(properties: { [key: string]: ConvertibleType }) {
         if (socket == null) {
             throw new Error('Not connected to an analyzer.');
         }
@@ -246,10 +250,7 @@ module.exports = {
         socket.emit('set_properties', typed_to_bytes(properties));
     },
 
-    /**
-     * @param analyzer_name {string}
-     */
-    connect(analyzer_name) {
+    connect(analyzer_name: string) {
         if (socket != null) {
             throw new Error('Already connected to the analyzer.');
         }
@@ -258,17 +259,17 @@ module.exports = {
         socket.on('connect', function () {
             socket.emit('start_analysis', analyzer_name);
         });
-        socket.on('properties', function (data) {
+        socket.on('properties', function (data: PortableType) {
             target.dispatchEvent(new CustomEvent('properties', {
                 detail: bytes_to_typed(data)
             }));
         });
-        socket.on('results', function (data) {
+        socket.on('results', function (data: PortableType) {
             target.dispatchEvent(new CustomEvent('results', {
                 detail: bytes_to_typed(data)
             }));
         });
-        socket.on('internal_error', function (data) {
+        socket.on('internal_error', function (data: PortableType) {
             target.dispatchEvent(new CustomEvent('error', {
                 detail: bytes_to_typed(data)
             }));
