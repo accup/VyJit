@@ -52,26 +52,29 @@ async def signal_input(
 async def signal_analysis(
     sio: socketio.AsyncServer,
     get_buffer: Callable[[], Awaitable[Union[None, np.ndarray]]],
-    get_sid_results_pairs: Callable[[], AsyncIterable],
+    get_analyzer_sets: Callable[[], AsyncIterable],
 ):
     while True:
         buffer = await get_buffer()
         if buffer is None:
             break
 
-        try:
-            async for sid, results in get_sid_results_pairs(buffer):
+        for sid, (lock, analyzer) in await get_analyzer_sets():
+            try:
+                async with lock:
+                    results = analyzer.analyze(np.copy(buffer))
+
                 await sio.emit(
                     'results',
                     data=numpy_to_bytes(results),
                     room=sid,
                 )
-        except KeyboardInterrupt:
-            raise
-        except Exception:
-            await sio.emit(
-                'internal_error',
-                data=traceback.format_exc(),
-                room=sid,
-            )
-            await sio.disconnect(sid)
+            except KeyboardInterrupt:
+                raise
+            except Exception:
+                await sio.emit(
+                    'internal_error',
+                    data=traceback.format_exc(),
+                    room=sid,
+                )
+                await sio.disconnect(sid)

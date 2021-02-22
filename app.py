@@ -71,14 +71,10 @@ class AnalyzerRoutine:
                 self.queue_info['get'] += 1
         return buffer
 
-    async def _get_sid_results_pairs(self, buffer: np.ndarray):
+    async def _get_analyzer_sets(self):
         async with self.analyzer_dict_lock:
             items = list(self.analyzer_dict.items())
-
-        for sid, (lock, analyzer) in items:
-            async with lock:
-                results = analyzer.analyze(np.copy(buffer))
-            yield sid, results
+        return items
 
     async def display_queue_info(self):
         while True:
@@ -153,7 +149,7 @@ class AnalyzerRoutine:
             coroutine.signal_analysis(
                 sio=self.sio,
                 get_buffer=self._get_buffer,
-                get_sid_results_pairs=self._get_sid_results_pairs,
+                get_analyzer_sets=self._get_analyzer_sets,
             )
         )
 
