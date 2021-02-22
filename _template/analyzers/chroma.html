@@ -1,0 +1,13 @@
+{% extends 'layouts/analyzer.html' %}
+
+{% block title %}Test{% endblock %}
+
+{% block visualizer %}
+<div id="visualizer" class="container-fluid">
+    <canvas id="spectrogram" width="500" height="200"></canvas>
+</div>
+{% endblock %}
+
+{% block listener %}
+<script src="/static/analyzers/chroma.js"></script>
+{% endblock %}
