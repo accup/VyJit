@@ -23,6 +23,16 @@ export class PseudoColorRenderer implements Renderer<Float32Array | Float64Array
         this._colorMap = color_map;
 
         this._frame = this._nFrames - 1;
+
+        this._init();
+    }
+
+    _init() {
+        this._ctx.save();
+        this._ctx.globalAlpha = 1.0;
+        this._ctx.fillStyle = Color.toRgba(this._colorMap.getColor(0));
+        this._ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+        this._ctx.restore();
     }
 
     push(data: Float32Array | Float64Array) {
