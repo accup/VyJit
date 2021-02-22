@@ -59,19 +59,19 @@ async def signal_analysis(
         if buffer is None:
             break
 
-        async for sid, results in get_sid_results_pairs(buffer):
-            try:
+        try:
+            async for sid, results in get_sid_results_pairs(buffer):
                 await sio.emit(
                     'results',
                     data=numpy_to_bytes(results),
                     room=sid,
                 )
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                await sio.emit(
-                    'internal_error',
-                    data=traceback.format_exc(),
-                    room=sid,
-                )
-                await sio.disconnect(sid)
+        except KeyboardInterrupt:
+            raise
+        except Exception:
+            await sio.emit(
+                'internal_error',
+                data=traceback.format_exc(),
+                room=sid,
+            )
+            await sio.disconnect(sid)
