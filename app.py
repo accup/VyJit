@@ -69,7 +69,7 @@ class AnalyzerRoutine:
         if buffer is not None:
             async with self.queue_info_lock:
                 self.queue_info['get'] += 1
-        return buffer
+        return buffer, self.sample_rate
 
     async def _get_analyzer_sets(self):
         async with self.analyzer_dict_lock:

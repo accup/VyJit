@@ -55,14 +55,14 @@ async def signal_analysis(
     get_analyzer_sets: Callable[[], AsyncIterable],
 ):
     while True:
-        buffer = await get_buffer()
+        buffer, sample_rate = await get_buffer()
         if buffer is None:
             break
 
         for sid, (lock, analyzer) in await get_analyzer_sets():
             try:
                 async with lock:
-                    results = analyzer.analyze(np.copy(buffer))
+                    results = analyzer.analyze(np.copy(buffer), sample_rate)
 
                 await sio.emit(
                     'results',
