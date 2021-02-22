@@ -9,6 +9,7 @@
     "dependencies": {
         "@babel/core": "^7.12.17",
         "@babel/preset-env": "^7.12.17",
+        "@babel/preset-typescript": "^7.12.17",
         "@popperjs/core": "^2.8.2",
         "babel-loader": "^8.2.2",
         "bootstrap": "^5.0.0-beta2",
