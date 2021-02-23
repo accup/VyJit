@@ -47,9 +47,11 @@ class analyzer_property:
 
     def compute(self, callback: Callable[['BaseAnalyzer'], Any]):
         self.compute_callbacks.append(callback)
+        return callback
 
     def validate(self, callback: Callable[['BaseAnalyzer', Any], bool]):
         self.validate_callbacks.append(callback)
+        return callback
 
 
 class AnalyzerMeta (type):
