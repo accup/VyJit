@@ -194,7 +194,7 @@ function typed_to_bytes(typed: ConvertibleType): PortableType {
             if ('_dtype' in typed) {
                 throw new Error("Illegal property '_dtype'.");
             }
-            const data = {};
+            const data: { [key: string]: PortableType } = {};
             for (const prop in typed) {
                 data[prop] = typed_to_bytes(typed[prop]);
             }
@@ -220,7 +220,7 @@ function bytes_to_typed(data: PortableType): ConvertibleType {
         } else if (instanceofPortableTypedArray(data)) {
             return make_typed(data._dtype, data._buffer);
         } else {
-            const typed = {};
+            const typed: { [key: string]: ConvertibleType } = {};
             for (const prop in data) {
                 typed[prop] = bytes_to_typed(data[prop]);
             }
@@ -236,10 +236,10 @@ let socket: null | Socket = null;
 
 
 export default {
-    on(event: string, listener: (data: any) => void) {
-        target.addEventListener(event, function (event: CustomEvent) {
+    on(event: string, listener: (data: ConvertibleType) => void) {
+        target.addEventListener(event, (function (event: CustomEvent<ConvertibleType>) {
             listener(event.detail);
-        });
+        }) as EventListener);
     },
 
     setProperties(properties: { [key: string]: ConvertibleType }) {
