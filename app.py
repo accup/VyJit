@@ -168,12 +168,14 @@ class AnalyzerRoutine:
         try:
             analyzer_module = importlib.import_module(analyzer_module_name)
             analyzer = analyzer_module.Analyzer()
-            data = analyzer.get_client_properties()
+            data = analyzer.get_client_property_details()
 
             async with self.analyzer_dict_lock:
                 self.analyzer_dict[sid] = asyncio.Lock(), analyzer
 
-            await self.sio.emit('properties', data, room=sid)
+            await self.sio.emit('define_properties', data, room=sid)
+        except KeyboardInterrupt:
+            raise
         except Exception:
             await self.sio.emit(
                 'internal_error',

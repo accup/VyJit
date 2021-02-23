@@ -4,14 +4,14 @@ from typing import Union, Tuple, List, Dict
 
 
 ConvertibleType = Union[
-    int, float, str, bytes, np.ndarray,
+    None, int, float, str, bytes, np.ndarray,
     np.int8, np.uint8, np.int16, np.uint16,
     np.int32, np.uint32, np.float32, np.float64,
     Tuple['ConvertibleType'], List['ConvertibleType'],
     Dict[str, 'ConvertibleType'],
 ]
 PortableType = Union[
-    int, float, str, bytes,
+    None, int, float, str, bytes,
     Tuple['PortableType'], List['PortableType'],
     Dict[str, 'PortableType'],
 ]

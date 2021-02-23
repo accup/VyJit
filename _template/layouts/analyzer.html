@@ -11,24 +11,6 @@
     {% block control_panel %}
     <div id="control_panel" class="mb-3">
     </div>
-    <template id="template_control_text">
-        <div class="form-floating">
-            <input class="form-control" type="text">
-            <label class="form-label"></label>
-        </div>
-    </template>
-    <template id="template_control_number">
-        <div class="form-floating">
-            <input class="form-control" type="number">
-            <label class="form-label"></label>
-        </div>
-    </template>
-    <template id="template_control_boolean">
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox">
-            <label class="form-check-label"></label>
-        </div>
-    </template>
     {% endblock %}
 
     {% block visualizer %}{% endblock %}
@@ -36,90 +18,79 @@
 
 <script>
     (function () {
-        /**
-         * @param template_id {string}
-         * @param property_name {string}
-         */
-        function createControl(template_id, property_name) {
-            const template = document.getElementById(template_id);
-            const control = template.content.firstElementChild.cloneNode(true);
-            const label = control.querySelector('label');
-            const input = control.querySelector('input');
-            const id = 'property_control_input_' + property_name;
-            label.htmlFor = id;
-            input.id = id;
-            return control;
-        }
-        /**
-         * @param property_name {string}
-         * @param value_type {string}
-         */
-        function getControl(property_name, value_type) {
-            const controlPanel = document.getElementById('control_panel');
-            const controlId = 'property_control_' + property_name;
-            let control = controlPanel.querySelector('#' + controlId);
-            if (control == null) {
-                /**
-                 * @param target {HTMLInputElement}
-                 * @returns {string|number|null}
-                 */
-                let value_getter = target => target.value;
-                switch (value_type) {
-                    case "string":
-                        control = createControl('template_control_text', property_name);
-                        break;
-                    case "number":
-                        control = createControl('template_control_number', property_name);
-                        value_getter = target => {
-                            const value = target.valueAsNumber;
-                            if (isNaN(value)) {
-                                return null;
-                            } else {
-                                return value;
-                            }
-                        }
-                        break;
-                    case "boolean":
-                        control = createControl('template_control_boolean', property_name);
-                        value_getter = target => target.checked;
-                        break;
-                    default:
-                        throw new Error("Invalid property type.");
-                }
-                control.id = controlId;
-                setControlLabel(control, property_name);
-                control.addEventListener('change', function (event) {
-                    const value = value_getter(event.target);
-                    const properties = {};
-                    properties[property_name] = value;
-                    analyzer.setProperties(properties);
-                });
-                controlPanel.appendChild(control);
-            }
-            return control;
-        }
-        /**
-         * @param control {HTMLElement}
-         * @param label {string}
-         */
-        function setControlLabel(control, label) {
-            control.querySelector('label').textContent = label;
-        }
-        /**
-         * @param control {HTMLElement}
-         * @param value {number|string}
-         */
-        function setControlValue(control, value) {
-            control.querySelector('input').value = value;
-        }
+        const controls = {};
 
+        function onChangeValue(control) {
+            const properties = {};
+            properties[control.name] = control.value;
+            analyzer.setProperties(properties);
+        }
 
         analyzer.connect('{{ analyzer_name }}');
+        analyzer.on('define_properties', function (properties) {
+            const panel = document.getElementById('control_panel');
+
+            for (const property_name in properties) {
+                if (property_name in controls) continue;
+
+                const info = properties[property_name];
+
+
+
+                let control;
+                switch (info.detail.type) {
+                    case "str": {
+                        control = new c5l.StringPropertyControl(
+                            property_name,
+                            info.value,
+                            info.detail,
+                            onChangeValue,
+                        );
+                        break;
+                    }
+                    case "int": {
+                        control = new c5l.IntegerPropertyControl(
+                            property_name,
+                            info.value,
+                            info.detail,
+                            onChangeValue,
+                        );
+                        break;
+                    }
+                    case "float": {
+                        control = new c5l.NumberPropertyControl(
+                            property_name,
+                            info.value,
+                            info.detail,
+                            onChangeValue,
+                        );
+                        break;
+                    }
+                    case "bool": {
+                        control = new c5l.BooleanPropertyControl(
+                            property_name,
+                            info.value,
+                            info.detail,
+                            onChangeValue,
+                        );
+                        break;
+                    }
+                    default:
+                        throw new Error(`Unknown property type '${info.detail.type}'`);
+                }
+
+                panel.appendChild(control.element);
+                controls[property_name] = control;
+            }
+        });
         analyzer.on('properties', function (properties) {
             for (const property_name in properties) {
-                const value = properties[property_name];
-                let control = getControl(property_name, typeof value);
-                setControlValue(control, value);
+                if (property_name in controls) {
+                    const value = properties[property_name];
+                    const control = controls[property_name];
+
+                    control.value = value;
+                }
             }
         });
         analyzer.on('error', function (message) {

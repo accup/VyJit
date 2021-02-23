@@ -259,6 +259,11 @@ export default {
         socket.on('connect', function () {
             socket!.emit('start_analysis', analyzer_name);
         });
+        socket.on('define_properties', function (data: PortableType) {
+            target.dispatchEvent(new CustomEvent('define_properties', {
+                detail: bytes_to_typed(data)
+            }));
+        });
         socket.on('properties', function (data: PortableType) {
             target.dispatchEvent(new CustomEvent('properties', {
                 detail: bytes_to_typed(data)
