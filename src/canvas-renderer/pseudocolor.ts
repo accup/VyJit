@@ -62,8 +62,8 @@ export class PseudoColorRenderer implements Renderer<Float32Array | Float64Array
         this._ctx.globalAlpha = 1.0;
 
         for (let index = 0; index < n_bins; ++index) {
-            const top = height * index / n_bins;
-            const bottom = height * (index + 1) / n_bins;
+            const top = Math.round(height * index / n_bins);
+            const bottom = Math.round(height * (index + 1) / n_bins);
 
             /** データ値 */
             const value = this._data[index];
