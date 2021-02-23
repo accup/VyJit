@@ -41,10 +41,10 @@ export class SectionColorMap extends ColorMap {
             .map(({ key, color = {} }) => ({
                 key,
                 color: {
-                    r: ('r' in color) ? Math.max(0.0, Math.min(color.r, 1.0)) : 0.0,
-                    g: ('g' in color) ? Math.max(0.0, Math.min(color.g, 1.0)) : 0.0,
-                    b: ('b' in color) ? Math.max(0.0, Math.min(color.b, 1.0)) : 0.0,
-                    a: ('a' in color) ? Math.max(0.0, Math.min(color.a, 1.0)) : 1.0,
+                    r: ('r' in color) ? Math.max(0.0, Math.min(color.r!, 1.0)) : 0.0,
+                    g: ('g' in color) ? Math.max(0.0, Math.min(color.g!, 1.0)) : 0.0,
+                    b: ('b' in color) ? Math.max(0.0, Math.min(color.b!, 1.0)) : 0.0,
+                    a: ('a' in color) ? Math.max(0.0, Math.min(color.a!, 1.0)) : 1.0,
                 },
             }))
             .sort(({ key: key_a }, { key: key_b }) => key_a - key_b);
