@@ -2,7 +2,8 @@ const path = require('path');
 
 
 module.exports = {
-    mode: "production",
+    mode: 'production',
+    cache: { type: 'memory' },
     entry: path.resolve(__dirname, 'src/index.ts'),
     output: {
         filename: 'bundle.js',
