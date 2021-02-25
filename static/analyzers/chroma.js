@@ -1,7 +1,4 @@
 window.addEventListener('load', function (event) {
-    /**
-     * @type {HTMLCanvasElement}
-     */
     const canvas = document.getElementById('spectrogram');
 
     const renderer = new r6r.PseudoColorRenderer(
@@ -14,8 +11,7 @@ window.addEventListener('load', function (event) {
         ]),
     );
     analyzer.on('results', function (data) {
-        renderer.push(data);
-        requestAnimationFrame(() => renderer.draw());
-        console.log(renderer._frame);
+        renderer.push(data.reverse());
+        renderer.draw();
     });
 });
