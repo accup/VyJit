@@ -130,16 +130,16 @@ export class IntegerPropertyControl extends NumberPropertyControl {
     constructor(
         name: string,
         value: number,
-        detail: { min: number, max: number, step: number },
+        detail: { min: number | null, max: number | null, step: number | null },
         onChange: (control: IntegerPropertyControl) => any,
     ) {
         super(
             name,
             value,
             {
-                min: Math.floor(detail.min),
-                max: Math.ceil(detail.max),
-                step: Math.round(detail.step),
+                min: (detail.min == null) ? null : Math.floor(detail.min),
+                max: (detail.max == null) ? null : Math.ceil(detail.max),
+                step: (detail.step == null) ? null : Math.round(detail.step),
             },
             onChange,
         );
