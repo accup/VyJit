@@ -168,6 +168,7 @@ class Analyzer (BaseAnalyzer):
         result[argmax] = power
         result = result * self.scale
         return {
+            'spectrum': chroma.T.reshape(-1),
             'chroma': result.T.reshape(-1),
             'use_pass_filter': self.use_pass_filter,
             'pass_filter': (self.filter_bank @ self.pass_filter).T.reshape(-1),
