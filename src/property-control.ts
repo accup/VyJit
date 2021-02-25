@@ -15,7 +15,7 @@ export class StringPropertyControl implements IPropertyControl<string> {
     constructor(
         name: string,
         value: string,
-        detail: {},
+        detail: { readonly?: boolean },
         onChange: (control: StringPropertyControl) => any,
     ) {
         this._name = name;
@@ -27,6 +27,7 @@ export class StringPropertyControl implements IPropertyControl<string> {
             input.classList.add('form-control');
             input.type = 'text';
             input.id = inputId;
+            input.readOnly = detail.readonly ?? false;
             input.addEventListener('change', (event) => {
                 onChange(this);
             });
@@ -71,7 +72,7 @@ export class NumberPropertyControl implements IPropertyControl<number> {
     constructor(
         name: string,
         value: number,
-        detail: { min: number | null, max: number | null, step: number | null },
+        detail: { readonly?: boolean, min: number | null, max: number | null, step: number | null },
         onChange: (control: NumberPropertyControl) => any,
     ) {
         this._name = name;
@@ -83,6 +84,7 @@ export class NumberPropertyControl implements IPropertyControl<number> {
             input.classList.add('form-control');
             input.type = 'number';
             input.id = inputId;
+            input.readOnly = detail.readonly ?? false;
             if (detail.min != null) input.min = detail.min.toString();
             if (detail.max != null) input.max = detail.max.toString();
             if (detail.step != null) input.step = detail.step.toString();
@@ -130,13 +132,14 @@ export class IntegerPropertyControl extends NumberPropertyControl {
     constructor(
         name: string,
         value: number,
-        detail: { min: number | null, max: number | null, step: number | null },
+        detail: { readonly?: boolean, min: number | null, max: number | null, step: number | null },
         onChange: (control: IntegerPropertyControl) => any,
     ) {
         super(
             name,
             value,
             {
+                readonly: detail.readonly,
                 min: (detail.min == null) ? null : Math.floor(detail.min),
                 max: (detail.max == null) ? null : Math.ceil(detail.max),
                 step: (detail.step == null) ? null : Math.round(detail.step),
@@ -169,7 +172,7 @@ export class BooleanPropertyControl implements IPropertyControl<boolean> {
     constructor(
         name: string,
         value: boolean,
-        detail: {},
+        detail: { readonly?: boolean },
         onChange: (control: BooleanPropertyControl) => any,
     ) {
         this._name = name;
@@ -181,6 +184,7 @@ export class BooleanPropertyControl implements IPropertyControl<boolean> {
             input.classList.add('form-check-input');
             input.type = 'checkbox';
             input.id = inputId;
+            input.readOnly = detail.readonly ?? false;
             input.addEventListener('change', (event) => {
                 onChange(this);
             });

@@ -10,13 +10,13 @@ class analyzer_property:
         client_name: Optional[str] = None,
         *,
         default,
-        detail: ConvertibleType = None,
+        detail: Optional[Dict[str, ConvertibleType]] = None,
         hook: Callable[['BaseAnalyzer', Any], Any] = lambda obj, x: x,
     ):
         self.client_name = client_name
         self.default_value = default
         self.hook = hook
-        self.detail = detail
+        self.detail = {} if detail is None else detail
         self.compute_callbacks: List[
             Callable[['BaseAnalyzer'], Any]
         ] = []

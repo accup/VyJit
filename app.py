@@ -10,7 +10,7 @@ import asyncio
 import importlib
 import traceback
 
-from _lib.analyzer import BaseAnalyzer
+from _lib.analyzer import BaseAnalyzer, analyzer_property
 import _lib.coroutine as coroutine
 
 from argparse import ArgumentParser, Namespace, ArgumentDefaultsHelpFormatter
@@ -69,7 +69,7 @@ class AnalyzerRoutine:
         if buffer is not None:
             async with self.queue_info_lock:
                 self.queue_info['get'] += 1
-        return buffer, self.sample_rate
+        return buffer
 
     async def _get_analyzer_sets(self):
         async with self.analyzer_dict_lock:
@@ -167,7 +167,19 @@ class AnalyzerRoutine:
         analyzer_module_name = 'analyzers.{}'.format(name)
         try:
             analyzer_module = importlib.import_module(analyzer_module_name)
-            analyzer = analyzer_module.Analyzer()
+            analyzer_class = analyzer_module.Analyzer
+            if hasattr(analyzer_class, 'window_size'):
+                window_size_property = analyzer_class.window_size
+                if isinstance(window_size_property, analyzer_property):
+                    window_size_property.default_value = self.window_size
+                    window_size_property.detail['readonly'] = True
+            if hasattr(analyzer_class, 'sample_rate'):
+                sample_rate_property = analyzer_class.sample_rate
+                if isinstance(sample_rate_property, analyzer_property):
+                    sample_rate_property.default_value = self.sample_rate
+                    sample_rate_property.detail['readonly'] = True
+
+            analyzer = analyzer_class()
             data = analyzer.get_client_property_details()
 
             async with self.analyzer_dict_lock:

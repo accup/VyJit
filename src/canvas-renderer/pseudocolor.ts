@@ -55,8 +55,8 @@ export class PseudoColorRenderer implements Renderer<Float32Array | Float64Array
         /** 新しいフレームを描画する右端位置 */
         const right = Math.round(width * (this._frame + 1) / this._nFrames);
 
-        // 新しいフレームを描画する場所をクリア
-        this._ctx.clearRect(left, 0, right - left, height);
+        // // 新しいフレームを描画する場所をクリア
+        // this._ctx.clearRect(left, 0, right - left, height);
 
         this._ctx.save();
         this._ctx.globalAlpha = 1.0;
