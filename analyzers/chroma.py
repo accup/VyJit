@@ -2,6 +2,7 @@ import numpy as np
 import scipy as sp
 import scipy.signal
 import librosa
+import math
 
 from _lib.analyzer import BaseAnalyzer, field
 
@@ -21,62 +22,51 @@ def get_chroma_frequencies(
     return f_min * 2.0 ** (octave + offset)
 
 
+def get_chroma_phases(
+    f_min: float,
+    bins_per_octave: int,
+    n_octaves: int,
+    dtype: np.dtype = np.float_,
+) -> np.ndarray:
+    octave = np.arange(n_octaves, dtype=dtype)[np.newaxis, :]
+    offset = np.arange(bins_per_octave, dtype=dtype)[:, np.newaxis]
+    return math.tau * (np.log2(f_min) + octave + offset / bins_per_octave)
+
+
+def get_phases(frequencies: np.ndarray):
+    return math.tau * np.log2(frequencies)
+
+
 def chroma_filter_bank(
     sample_rate: float,
     n_rfft: int,
     f_min: float,
     bins_per_octave: int,
     n_octaves: int,
-    filter_width: float = 2.0,
+    alpha: float = 1.0,
+    beta: float = 1.0,
+    ord: float = 2.0,
     dtype=np.float_,
 ):
-    low_chroma_freqs = get_chroma_frequencies(
-        f_min, bins_per_octave, n_octaves,
-        bin_offset=-0.5 * filter_width, dtype=dtype,
-    )[:, :, np.newaxis]
-    mid_chroma_freqs = get_chroma_frequencies(
-        f_min, bins_per_octave, n_octaves,
-        bin_offset=0, dtype=dtype,
-    )[:, :, np.newaxis]
-    high_chroma_freqs = get_chroma_frequencies(
-        f_min, bins_per_octave, n_octaves,
-        bin_offset=0.5 * filter_width, dtype=dtype,
-    )[:, :, np.newaxis]
-
-    fft_freqs = np.linspace(
-        0.0, sample_rate / 2, n_rfft, endpoint=True,
-    )[np.newaxis, np.newaxis, :]
-
     filter_bank = np.zeros(
         (bins_per_octave, n_octaves, n_rfft),
         dtype=dtype,
     )
-    low_chroma_freqs = np.broadcast_to(
-        low_chroma_freqs, filter_bank.shape)
-    mid_chroma_freqs = np.broadcast_to(
-        mid_chroma_freqs, filter_bank.shape)
-    high_chroma_freqs = np.broadcast_to(
-        high_chroma_freqs, filter_bank.shape)
-    fft_freqs = np.broadcast_to(fft_freqs, filter_bank.shape)
 
-    low_to_mid = np.logical_and(
-        low_chroma_freqs < fft_freqs,
-        fft_freqs <= mid_chroma_freqs,
+    mid_chroma_phases = get_chroma_phases(
+        f_min, bins_per_octave, n_octaves,
+        dtype=dtype,
+    )[:, :, np.newaxis]
+    fft_phases = get_phases(
+        np.linspace(0.0, sample_rate / 2, n_rfft, endpoint=True)
+    )[np.newaxis, np.newaxis, 1:]
+
+    xy = (np.exp(1j * mid_chroma_phases) - np.exp(1j * fft_phases)) * alpha
+    z = (mid_chroma_phases - fft_phases) / math.tau
+
+    filter_bank[:, :, 1:] = np.exp(
+        -beta * np.linalg.norm(np.stack([xy, z]), ord=ord, axis=0)
     )
-    mid_to_high = np.logical_and(
-        mid_chroma_freqs < fft_freqs,
-        fft_freqs < high_chroma_freqs,
-    )
-
-    freq = fft_freqs[low_to_mid]
-    low = low_chroma_freqs[low_to_mid]
-    mid = mid_chroma_freqs[low_to_mid]
-    filter_bank[low_to_mid] = (freq - low) / (mid - low)
-
-    freq = fft_freqs[mid_to_high]
-    mid = mid_chroma_freqs[mid_to_high]
-    high = high_chroma_freqs[mid_to_high]
-    filter_bank[mid_to_high] = (high - freq) / (high - mid)
 
     return filter_bank
 
@@ -86,16 +76,21 @@ class Analyzer (BaseAnalyzer):
     sample_rate = field.float_()
 
     scale = field.float_(default=1.0, step=1.0)
-    f_min = field.float_(default=32.70, min=0.0)
+
+    f_min = field.float_(default=200.0, min=1.0)
     bins_per_octave = field.int_(default=12, min=1)
-    n_octaves = field.int_(default=8, min=1)
-    filter_width = field.float_(default=2.0, min=1.0)
+    n_octaves = field.int_(default=4, min=1)
+    alpha = field.float_(default=0.6, step=0.1)
+    beta = field.float_(default=12.0, step=0.1)
+    ord = field.float_(default=2.0)
 
-    weight_factor = field.float_(default=0.95, min=0.0, max=1.0, step=0.01)
+    weight_factor = field.float_(default=1.0, min=0.0, max=1.0, step=0.01)
 
-    use_pass_filter = field.bool_(default=False)
-    pass_filter_min = field.float_(default=0.0, min=0.0, step=50.0)
-    pass_filter_max = field.float_(default=0.0, min=0.0, step=50.0)
+    use_window = field.bool_(default=True)
+
+    use_pass_filter = field.bool_(default=True)
+    pass_filter_min = field.float_(default=200.0, min=0.0, step=50.0)
+    pass_filter_max = field.float_(default=2000.0, min=0.0, step=50.0)
 
     normalize = field.bool_(default=False)
     use_log = field.bool_(default=False)
@@ -105,8 +100,8 @@ class Analyzer (BaseAnalyzer):
     def validate_positive_integer(self, value: int):
         return 1 <= value
 
-    @filter_width.validate
-    def validate_positive_float(self, value: float):
+    @f_min
+    def validate_f_min(self, value: float):
         return 1.0 <= value
 
     @pass_filter_min.validate
@@ -119,17 +114,19 @@ class Analyzer (BaseAnalyzer):
         self.update_filter_bank()
         self.update_chroma_weight()
         self.update_pass_filter()
-        self.pass_filter_max = self.sample_rate / 2
 
     @window_size.compute
     def update_window(self):
         self.window = np.hanning(self.window_size)
 
     @window_size.compute
+    @sample_rate.compute
     @f_min.compute
     @bins_per_octave.compute
     @n_octaves.compute
-    @filter_width.compute
+    @alpha.compute
+    @beta.compute
+    @ord.compute
     def update_filter_bank(self):
         self.filter_bank = chroma_filter_bank(
             sample_rate=self.sample_rate,
@@ -137,9 +134,11 @@ class Analyzer (BaseAnalyzer):
             f_min=self.f_min,
             bins_per_octave=self.bins_per_octave,
             n_octaves=self.n_octaves,
-            filter_width=self.filter_width,
+            alpha=self.alpha,
+            beta=self.beta,
+            ord=self.ord,
         )
-        self.filter_bank_sum = np.sqrt(
+        self.filter_bank_sum = (
             np.maximum(1e-10, self.filter_bank.sum(axis=-1))
         )
 
@@ -165,11 +164,9 @@ class Analyzer (BaseAnalyzer):
         self.pass_filter[b_min:b_max+1] = 1.0
 
     def analyze(self, signal: np.ndarray):
-        spectrum = np.abs(np.fft.rfft(self.window * signal[:, 0]))
-        relmax_indices = sp.signal.argrelmax(spectrum)
-        keep_value = np.copy(spectrum[relmax_indices])
-        spectrum[:] = 0.0
-        spectrum[relmax_indices] = keep_value
+        if self.use_window:
+            signal *= self.window[:, np.newaxis]
+        spectrum = np.abs(np.fft.rfft(signal[:, 0]))
 
         if self.use_pass_filter:
             spectrum *= self.pass_filter
@@ -178,14 +175,6 @@ class Analyzer (BaseAnalyzer):
             chroma /= self.filter_bank_sum
         if self.use_log:
             chroma = 10.0 + np.log(np.maximum(1e-10, chroma))
-
-        relmax_indices = np.unravel_index(
-            sp.signal.argrelmax(chroma.T.flatten()),
-            chroma.T.shape,
-        )[::-1]
-        keep_value = np.copy(chroma[relmax_indices])
-        chroma[:, :] = 0.0
-        chroma[relmax_indices] = keep_value
 
         self.chroma_weight *= 1.0 - self.weight_factor
         self.chroma_weight += self.weight_factor * chroma
