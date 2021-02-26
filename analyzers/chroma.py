@@ -45,27 +45,24 @@ def chroma_filter_bank(
     n_octaves: int,
     alpha: float = 1.0,
     beta: float = 1.0,
+    gamma: float = 1.0,
     ord: float = 2.0,
     dtype=np.float_,
 ):
-    filter_bank = np.zeros(
-        (bins_per_octave, n_octaves, n_rfft),
-        dtype=dtype,
-    )
-
-    mid_chroma_phases = get_chroma_phases(
+    mid_chroma_freqs = get_chroma_frequencies(
         f_min, bins_per_octave, n_octaves,
-        dtype=dtype,
+        bin_offset=0.0, dtype=dtype,
     )[:, :, np.newaxis]
-    fft_phases = get_phases(
-        np.linspace(0.0, sample_rate / 2, n_rfft, endpoint=True)
-    )[np.newaxis, np.newaxis, 1:]
+    fft_freqs = np.linspace(
+        0.0, sample_rate / 2, n_rfft, endpoint=True,
+    )[np.newaxis, np.newaxis, :]
 
-    xy = (np.exp(1j * mid_chroma_phases) - np.exp(1j * fft_phases)) * alpha
-    z = (mid_chroma_phases - fft_phases) / math.tau
+    xy = alpha * np.exp(math.tau * 1j * (fft_freqs / mid_chroma_freqs))
+    z = beta * (mid_chroma_freqs - fft_freqs)
 
-    filter_bank[:, :, 1:] = np.exp(
-        -beta * np.linalg.norm(np.stack([xy, z]), ord=ord, axis=0)
+    filter_bank = np.maximum(
+        0.0,
+        (1.0 - gamma * np.linalg.norm(np.stack([xy, z]), ord=ord, axis=0)),
     )
 
     return filter_bank
@@ -77,20 +74,21 @@ class Analyzer (BaseAnalyzer):
 
     scale = field.float_(default=1.0, step=1.0)
 
-    f_min = field.float_(default=200.0, min=1.0)
-    bins_per_octave = field.int_(default=12, min=1)
-    n_octaves = field.int_(default=4, min=1)
-    alpha = field.float_(default=0.6, step=0.1)
-    beta = field.float_(default=12.0, step=0.1)
-    ord = field.float_(default=2.0)
+    f_min = field.float_(default=32.70, min=1.0)
+    bins_per_octave = field.int_(default=36, min=1)
+    n_octaves = field.int_(default=8, min=1)
+    alpha = field.float_(default=3.0, step=0.1)
+    beta = field.float_(default=0.01, step=0.1)
+    gamma = field.float_(default=0.01, step=0.1)
+    ord = field.float_(default=0.15, min=0.0, step=0.1)
 
     weight_factor = field.float_(default=1.0, min=0.0, max=1.0, step=0.01)
 
     use_window = field.bool_(default=True)
 
     use_pass_filter = field.bool_(default=True)
-    pass_filter_min = field.float_(default=200.0, min=0.0, step=50.0)
-    pass_filter_max = field.float_(default=2000.0, min=0.0, step=50.0)
+    pass_filter_min = field.float_(default=0.0, min=0.0, step=50.0)
+    pass_filter_max = field.float_(default=0.0, min=0.0, step=50.0)
 
     normalize = field.bool_(default=False)
     use_log = field.bool_(default=False)
@@ -99,6 +97,10 @@ class Analyzer (BaseAnalyzer):
     @n_octaves.validate
     def validate_positive_integer(self, value: int):
         return 1 <= value
+
+    @ord.validate
+    def validate_positive_float(self, value: float):
+        return 0.0 <= value
 
     @f_min
     def validate_f_min(self, value: float):
@@ -114,6 +116,7 @@ class Analyzer (BaseAnalyzer):
         self.update_filter_bank()
         self.update_chroma_weight()
         self.update_pass_filter()
+        self.pass_filter_max = self.sample_rate / 2.0
 
     @window_size.compute
     def update_window(self):
@@ -126,6 +129,7 @@ class Analyzer (BaseAnalyzer):
     @n_octaves.compute
     @alpha.compute
     @beta.compute
+    @gamma.compute
     @ord.compute
     def update_filter_bank(self):
         self.filter_bank = chroma_filter_bank(
@@ -136,6 +140,7 @@ class Analyzer (BaseAnalyzer):
             n_octaves=self.n_octaves,
             alpha=self.alpha,
             beta=self.beta,
+            gamma=self.gamma,
             ord=self.ord,
         )
         self.filter_bank_sum = (
