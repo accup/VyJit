@@ -1,7 +1,5 @@
-from .signal import signal_input, signal_analysis
-
+from .application import application_main
 
 __all__ = [
-    'signal_input',
-    'signal_analysis',
+    'application_main',
 ]

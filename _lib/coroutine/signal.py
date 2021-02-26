@@ -3,40 +3,28 @@ import sounddevice as sd
 
 import socketio
 
-import threading
 import asyncio
 import traceback
 
 from _lib.util import numpy_to_bytes
 
-from typing import Union, Optional, Callable, Awaitable, AsyncIterable
+from .core import AnalyzerInfo
+
+from typing import Union, Optional, Callable, Awaitable, Dict
 
 
 async def signal_input(
     loop: asyncio.AbstractEventLoop,
     event: asyncio.Event,
-    put_buffer: Callable[[np.ndarray], Awaitable[None]],
+    put_block: Callable[[np.ndarray], None],
     sample_rate: float,
     channels: int,
-    window_size: int,
     block_size: int = 0,
     device: Optional[Union[int, str]] = None,
     dtype: np.dtype = np.float32,
 ):
-    buffer = np.zeros((window_size, channels), dtype=dtype)
-    buffer_lock = threading.Lock()
-
     def callback(indata: np.ndarray, frames, time, status):
-        with buffer_lock:
-            length = min(buffer.shape[0], indata.shape[0])
-            left_length = buffer.shape[0] - length
-            buffer[:left_length, :] = buffer[length:, :]
-            buffer[left_length:, :] = indata[indata.shape[0] - length:, :]
-
-            asyncio.run_coroutine_threadsafe(
-                put_buffer(np.copy(buffer)),
-                loop=loop,
-            )
+        loop.call_soon_threadsafe(put_block, indata.copy())
 
     with sd.InputStream(
         samplerate=sample_rate,
@@ -51,23 +39,27 @@ async def signal_input(
 
 async def signal_analysis(
     sio: socketio.AsyncServer,
-    get_buffer: Callable[[], Awaitable[Union[None, np.ndarray]]],
-    get_analyzer_sets: Callable[[], AsyncIterable],
+    analyzer_dict: Dict[str, AnalyzerInfo],
+    get_block: Callable[[], Awaitable[Union[None, np.ndarray]]],
 ):
     while True:
-        buffer = await get_buffer()
-        if buffer is None:
+        block = await get_block()
+        if block is None:
             break
 
-        for sid, (lock, analyzer) in await get_analyzer_sets():
+        for info in analyzer_dict.values():
             try:
-                async with lock:
-                    results = analyzer.analyze(np.copy(buffer))
+                length = min(info.buffer.shape[0], block.shape[0])
+                left_length = info.buffer.shape[0] - length
+                info.buffer[:left_length] = info.buffer[length:]
+                info.buffer[left_length:] = block[block.shape[0] - length:]
+
+                results = info.analyzer.analyze(np.copy(info.buffer))
 
                 await sio.emit(
                     'results',
                     data=numpy_to_bytes(results),
-                    room=sid,
+                    room=info.sid,
                 )
             except KeyboardInterrupt:
                 raise
@@ -75,6 +67,6 @@ async def signal_analysis(
                 await sio.emit(
                     'internal_error',
                     data=traceback.format_exc(),
-                    room=sid,
+                    room=info.sid,
                 )
-                await sio.disconnect(sid)
+                await sio.disconnect(info.sid)

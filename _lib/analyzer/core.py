@@ -74,7 +74,7 @@ class AnalyzerMeta (type):
 
 
 class BaseAnalyzer (metaclass=AnalyzerMeta):
-    def analyze(self, signal: np.ndarray, sample_rate: float):
+    def analyze(self, signal: np.ndarray):
         raise NotImplementedError
 
     def get_client_properties(
