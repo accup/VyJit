@@ -4,6 +4,9 @@ from ..util.convert import ConvertibleType
 from typing import Any, Optional, Iterable, Callable, Tuple, List, Dict
 
 
+GLOBAL_GROUP = ''
+
+
 class analyzer_property:
     def __init__(
         self,
@@ -23,6 +26,8 @@ class analyzer_property:
         self.validate_callbacks: List[
             [Callable[['BaseAnalyzer', Any], bool]]
         ] = []
+
+        self.detail['group'] = GLOBAL_GROUP
 
     def __set_name__(self, owner, name: str):
         if self.client_name is None:
@@ -72,6 +77,9 @@ class AnalyzerMeta (type):
             if isinstance(value, analyzer_property):
                 cls._properties[value.client_name] = value.name
 
+        global GLOBAL_GROUP
+        GLOBAL_GROUP = ''
+
 
 class BaseAnalyzer (metaclass=AnalyzerMeta):
     def analyze(self, signal: np.ndarray):
@@ -112,3 +120,8 @@ class BaseAnalyzer (metaclass=AnalyzerMeta):
             }
             for client_name in client_names
         }
+
+
+def group(name: str):
+    global GLOBAL_GROUP
+    GLOBAL_GROUP = str(name)

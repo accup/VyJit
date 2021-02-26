@@ -79,7 +79,35 @@
                         throw new Error(`Unknown property type '${info.detail.type}'`);
                 }
 
-                panel.appendChild(control.element);
+                const groupId = 'property_control_group_' + info.detail.group;
+                let groupDiv = document.getElementById(groupId);
+                if (groupDiv == null) {
+                    const wrapDiv = document.createElement('div');
+                    wrapDiv.classList.add('row');
+                    wrapDiv.classList.add('mb-1');
+
+                    const textDiv = document.createElement('div');
+                    textDiv.textContent = info.detail.group;
+                    textDiv.classList.add('form-text');
+                    textDiv.classList.add('col-1');
+                    wrapDiv.appendChild(textDiv);
+
+                    groupDiv = document.createElement('div');
+                    groupDiv.id = groupId;
+                    groupDiv.classList.add('col-11');
+                    groupDiv.classList.add('row');
+                    groupDiv.classList.add('row-cols-auto');
+
+                    wrapDiv.appendChild(groupDiv);
+                    panel.appendChild(wrapDiv);
+                }
+
+                const controlDiv = document.createElement('div');
+                controlDiv.classList.add('col');
+                controlDiv.appendChild(control.element);
+
+                groupDiv.appendChild(controlDiv);
+
                 controls[property_name] = control;
             }
         });
