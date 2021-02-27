@@ -104,9 +104,10 @@ async def display_queue_info(
 ):
     while True:
         print(
-            '\r{} blocks queued, '
+            '    \r'
+            '{} blocks queued, '
             '{} blocks skipped, '
-            '{} blocks analyzed.    '.format(
+            '{} blocks analyzed.'.format(
                 indata_queue.qsize(),
                 queue_info['skip'],
                 queue_info['get'],
