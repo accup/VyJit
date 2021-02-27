@@ -154,7 +154,7 @@ async def application_main(
     app.add_routes(routes)
     aiohttp_jinja2.setup(
         app,
-        loader=jinja2.FileSystemLoader('_template'),
+        loader=jinja2.FileSystemLoader(['analyzers', '_template']),
     )
     register_handlers(
         sio=sio,

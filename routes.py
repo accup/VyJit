@@ -32,7 +32,7 @@ async def analysis(request: web.Request):
         raise web.HTTPInternalServerError(text=traceback.format_exc())
 
     return render_template(
-        'analyzers/{}.html'.format(analyzer_name),
+        '{}/index.html'.format(analyzer_name),
         request=request,
         context={
             'analyzer_name': analyzer_name
@@ -41,5 +41,6 @@ async def analysis(request: web.Request):
 
 
 # static resources
+routes.static('/analyzers', 'analyzers')
 routes.static('/static', 'static')
 routes.static('/dist', 'dist')
