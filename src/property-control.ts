@@ -7,8 +7,25 @@ interface IPropertyControl<T> {
 }
 
 
-export class StringPropertyControl implements IPropertyControl<string> {
-    _name;
+abstract class PropertyControl<T> implements IPropertyControl<T> {
+    _name: string;
+
+    constructor(name: string) {
+        this._name = name;
+    }
+
+    get name() {
+        return this._name;
+    }
+
+    abstract get element(): HTMLElement;
+
+    abstract get value(): T | null;
+    abstract set value(value: T | null);
+}
+
+
+export class StringPropertyControl extends PropertyControl<string> {
     _control;
     _input;
 
@@ -18,7 +35,8 @@ export class StringPropertyControl implements IPropertyControl<string> {
         detail: { readonly?: boolean },
         onChange: (control: StringPropertyControl) => any,
     ) {
-        this._name = name;
+        super(name);
+
         const control = document.createElement('div');
         const inputId = 'property_control_input_' + name;
         control.classList.add('form-floating');
@@ -46,10 +64,6 @@ export class StringPropertyControl implements IPropertyControl<string> {
         this.value = value;
     }
 
-    get name() {
-        return this._name;
-    }
-
     get element() {
         return this._control;
     }
@@ -64,8 +78,7 @@ export class StringPropertyControl implements IPropertyControl<string> {
 }
 
 
-export class NumberPropertyControl implements IPropertyControl<number> {
-    _name;
+export class NumberPropertyControl extends PropertyControl<number> {
     _control;
     _input;
 
@@ -75,7 +88,8 @@ export class NumberPropertyControl implements IPropertyControl<number> {
         detail: { readonly?: boolean, min: number | null, max: number | null, step: number | null },
         onChange: (control: NumberPropertyControl) => any,
     ) {
-        this._name = name;
+        super(name);
+
         const control = document.createElement('div');
         const inputId = 'property_control_input_' + name;
         control.classList.add('form-floating');
@@ -104,10 +118,6 @@ export class NumberPropertyControl implements IPropertyControl<number> {
 
         this._control = control;
         this.value = value;
-    }
-
-    get name() {
-        return this._name;
     }
 
     get element() {
@@ -164,8 +174,7 @@ export class IntegerPropertyControl extends NumberPropertyControl {
 
 
 
-export class BooleanPropertyControl implements IPropertyControl<boolean> {
-    _name;
+export class BooleanPropertyControl extends PropertyControl<boolean> {
     _control;
     _input;
 
@@ -175,7 +184,8 @@ export class BooleanPropertyControl implements IPropertyControl<boolean> {
         detail: { readonly?: boolean },
         onChange: (control: BooleanPropertyControl) => any,
     ) {
-        this._name = name;
+        super(name);
+
         const control = document.createElement('div');
         const inputId = 'property_control_input_' + name;
         control.classList.add('form-check');
@@ -201,10 +211,6 @@ export class BooleanPropertyControl implements IPropertyControl<boolean> {
 
         this._control = control;
         this.value = value;
-    }
-
-    get name() {
-        return this._name;
     }
 
     get element() {
