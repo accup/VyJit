@@ -62,7 +62,7 @@ async def signal_analysis(
                     length = min(required_length, block_size - frame)
                     left_length = buffer_size - length
                     buffer[:left_length] = buffer[length:]
-                    buffer[left_length:] = block[block_size - length:]
+                    buffer[left_length:] = block[frame:frame + length]
                     if required_length <= length:
                         results = info.analyzer.analyze(np.copy(buffer))
 

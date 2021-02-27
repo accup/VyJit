@@ -1,4 +1,6 @@
 import numpy as np
+import math
+
 from collections import deque
 
 from _lib.analyzer import BaseAnalyzer, group, field
@@ -11,58 +13,36 @@ def get_logarithmic_frequencies(
     bin_offset: float,
     dtype: np.dtype = np.float_,
 ) -> np.ndarray:
-    freqs = np.arange(n_bins, dtype=dtype)
-    freqs += bin_offset
-    freqs /= bins_per_octave
-    # np.exp2(freqs, out=freqs)
-    # freqs *= f_min
-    return f_min * 2 ** freqs
+    bins = np.arange(n_bins, dtype=dtype)
+    return f_min * (2 ** ((bins + bin_offset) / bins_per_octave))
 
 
-def logarithmic_filter_bank(
+def cqt_kernel(
     sample_rate: float,
-    n_rfft: int,
+    window_size: int,
     f_min: float,
     n_bins: int,
     bins_per_octave: int,
-    width: float = 1.0,
-    dtype=np.float_,
+    q: float = 5.0,
+    window=np.hamming,
 ):
-    lo_freqs = get_logarithmic_frequencies(
+    freqs = get_logarithmic_frequencies(
         f_min, n_bins, bins_per_octave,
-        bin_offset=-width, dtype=dtype,
-    )[:, np.newaxis]
-    mi_freqs = get_logarithmic_frequencies(
-        f_min, n_bins, bins_per_octave,
-        bin_offset=0.0, dtype=dtype,
-    )[:, np.newaxis]
-    hi_freqs = get_logarithmic_frequencies(
-        f_min, n_bins, bins_per_octave,
-        bin_offset=width, dtype=dtype,
-    )[:, np.newaxis]
-    ft_freqs = np.linspace(
-        0.0, sample_rate / 2, n_rfft, endpoint=True,
-    )[np.newaxis, :]
+        bin_offset=0.0, dtype=np.float32,
+    )
+    lens = np.ceil(q * (sample_rate / freqs))
+    lens = np.minimum(window_size, lens).astype(np.int_)
+    qs = lens / (sample_rate / freqs)
 
-    filter_bank = np.zeros((n_bins, n_rfft), dtype=dtype)
-    lo_freqs = np.broadcast_to(lo_freqs, shape=filter_bank.shape)
-    mi_freqs = np.broadcast_to(mi_freqs, shape=filter_bank.shape)
-    hi_freqs = np.broadcast_to(hi_freqs, shape=filter_bank.shape)
-    ft_freqs = np.broadcast_to(ft_freqs, shape=filter_bank.shape)
+    kernel = np.zeros((n_bins, window_size), dtype=np.complex64)
+    for k in range(n_bins):
+        rindex = np.arange(lens[k] - 1, -1, -1)
+        kernel[k, window_size - lens[k]:] = (
+            window(lens[k])
+            * np.exp(1j * math.tau * qs[k] * rindex / lens[k])
+        ) / lens[k]
 
-    lo_to_mi = np.logical_and(lo_freqs < ft_freqs, ft_freqs <= mi_freqs)
-    lo = lo_freqs[lo_to_mi]
-    mi = mi_freqs[lo_to_mi]
-    ft = ft_freqs[lo_to_mi]
-    filter_bank[lo_to_mi] = (ft - lo) / (mi - lo)
-
-    mi_to_hi = np.logical_and(mi_freqs < ft_freqs, ft_freqs <= hi_freqs)
-    mi = mi_freqs[mi_to_hi]
-    hi = hi_freqs[mi_to_hi]
-    ft = ft_freqs[mi_to_hi]
-    filter_bank[mi_to_hi] = (hi - ft) / (hi - mi)
-
-    return filter_bank
+    return kernel
 
 
 class Analyzer (BaseAnalyzer):
@@ -74,11 +54,14 @@ class Analyzer (BaseAnalyzer):
     f_min = field.float_('Sample rate', default=32.7, step=1.0)
     n_bins = field.int_('Bins', default=36 * 9, min=1)
     bins_per_octave = field.int_('Bins per octave', default=36, min=1)
-    width = field.float_('Width', default=1.0, min=0.0, step=0.1)
+    q = field.float_('Q', default=5.0, min=0.0, step=1.0)
 
     group('History')
     use_history = field.bool_('Use history', default=False)
     histories = field.int_('Histories', default=1, min=1)
+
+    group('Miscellaneous')
+    scale = field.float_(default=1.0, step=0.1)
 
     @n_bins.validate
     @bins_per_octave.validate
@@ -95,37 +78,36 @@ class Analyzer (BaseAnalyzer):
     @f_min.compute
     @n_bins.compute
     @bins_per_octave.compute
-    @width.compute
-    def update_filter_bank(self):
-        self.filter_bank = logarithmic_filter_bank(
+    @q.compute
+    def update_kernel(self):
+        self.kernel = cqt_kernel(
             sample_rate=self.sample_rate,
-            n_rfft=self.window_size // 2 + 1,
+            window_size=self.window_size,
             f_min=self.f_min,
             n_bins=self.n_bins,
             bins_per_octave=self.bins_per_octave,
-            width=self.width,
+            q=self.q,
         )
-        self.filter_bank_sum = self.filter_bank.sum(axis=1)
 
     @sample_rate.compute
     @window_size.compute
     @f_min.compute
     @n_bins.compute
     @bins_per_octave.compute
-    @width.compute
+    @q.compute
     @histories.compute
     def update_history(self):
         self.history = deque(maxlen=self.histories)
 
     def __init__(self):
         self.update_window()
-        self.update_filter_bank()
+        self.update_kernel()
         self.update_history()
 
     def analyze(self, signal: np.ndarray):
-        signal *= self.window[:, np.newaxis]
-        spectrum = np.abs(np.fft.rfft(signal[:, 0]))
-        spectrum = self.filter_bank @ spectrum
+        # signal *= self.window[:, np.newaxis]
+        spectrum = self.kernel @ signal[:, 0]
+        spectrum = np.abs(spectrum)
         result = spectrum.copy()
 
         if self.use_history:
@@ -135,6 +117,5 @@ class Analyzer (BaseAnalyzer):
         self.history.append(spectrum)
 
         return {
-            'spectrum': result,
-            'filter_bank_sum': self.filter_bank_sum,
+            'spectrum': self.scale * result,
         }

@@ -21,7 +21,7 @@ window.addEventListener('load', function (event) {
         spectrum_renderer.push(data.spectrum.reverse());
         spectrum_renderer.draw();
 
-        bank_renderer.push(data.filter_bank_sum.reverse());
-        bank_renderer.draw();
+        // bank_renderer.push(data.filter_bank_sum.reverse());
+        // bank_renderer.draw();
     });
 });
