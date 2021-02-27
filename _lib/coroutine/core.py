@@ -11,3 +11,4 @@ class AnalyzerInfo:
     analyzer: BaseAnalyzer
     buffer: np.ndarray
     frame_step: int
+    next_frame: int

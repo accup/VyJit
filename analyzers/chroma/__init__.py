@@ -55,6 +55,7 @@ def chroma_filter_bank(
 class Analyzer (BaseAnalyzer):
     sample_rate = field.float_()
     window_size = field.int_()
+    frame_step = field.int_()
 
     group('scaling')
     scale = field.float_(default=7.0, step=1.0)

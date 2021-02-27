@@ -47,20 +47,34 @@ async def signal_analysis(
         if block is None:
             break
 
-        for info in analyzer_dict.values():
+        info_list = list(analyzer_dict.values())
+        for info in info_list:
             try:
-                length = min(info.buffer.shape[0], block.shape[0])
-                left_length = info.buffer.shape[0] - length
-                info.buffer[:left_length] = info.buffer[length:]
-                info.buffer[left_length:] = block[block.shape[0] - length:]
+                block_size = block.shape[0]
+                # The buffer and the frame-step must be kept in variables
+                # because they may be changed.
+                buffer = info.buffer
+                buffer_size = buffer.shape[0]
+                frame_step = info.frame_step
+                next_frame = info.next_frame
+                for frame in range(0, block_size, frame_step):
+                    required_length = frame_step - next_frame
+                    length = min(required_length, block_size - frame)
+                    left_length = buffer_size - length
+                    buffer[:left_length] = buffer[length:]
+                    buffer[left_length:] = block[block_size - length:]
+                    if required_length <= length:
+                        results = info.analyzer.analyze(np.copy(buffer))
 
-                results = info.analyzer.analyze(np.copy(info.buffer))
-
-                await sio.emit(
-                    'results',
-                    data=numpy_to_bytes(results),
-                    room=info.sid,
-                )
+                        await sio.emit(
+                            'results',
+                            data=numpy_to_bytes(results),
+                            room=info.sid,
+                        )
+                        next_frame = 0
+                    else:
+                        next_frame += length
+                info.next_frame = next_frame
             except KeyboardInterrupt:
                 raise
             except Exception:

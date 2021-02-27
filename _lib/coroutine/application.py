@@ -53,6 +53,7 @@ def register_handlers(  # noqa: C901
                 analyzer,
                 np.zeros((default_window_size, channels), dtype=dtype),
                 default_frame_step,
+                0,
             )
             analyzer_dict[sid] = analyzer_info
 
@@ -65,6 +66,7 @@ def register_handlers(  # noqa: C901
                 traceback.format_exc(),
                 room=sid,
             )
+            await sio.disconnect(sid)
 
     async def on_disconnect(sid: str):
         analyzer_dict.pop(sid, None)
@@ -80,15 +82,18 @@ def register_handlers(  # noqa: C901
             if attr_name == 'window_size':
                 if not isinstance(value, int):
                     continue
+                old_buf = info.buffer
                 new_buf = np.zeros((value, channels), dtype=dtype)
-                length = min(new_buf.shape[0], info.buffer.shape[0])
-                left_length = info.buffer.shape[0] - length
-                info.buffer[left_length:] = new_buf[new_buf.shape[0] - length:]
+                length = min(new_buf.shape[0], old_buf.shape[0])
+                left_length = new_buf.shape[0] - length
+                new_buf[left_length:] = old_buf[old_buf.shape[0] - length:]
                 info.buffer = new_buf
+                info.next_frame = 0
             elif attr_name == 'frame_step':
-                if not isinstance(value, int):
+                if not isinstance(value, int) or value <= 0:
                     continue
                 info.frame_step = value
+                info.next_frame = 0
             setattr(info.analyzer, attr_name, value)
         data = info.analyzer.get_client_properties(properties.keys())
         await sio.emit('properties', data, room=sid)

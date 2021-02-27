@@ -20,95 +20,110 @@
     (function () {
         const controls = {};
 
+        /**
+         * @template T
+         * @param control {c5l.IPropertyControl<T>}
+         */
         function onChangeValue(control) {
             const properties = {};
             properties[control.name] = control.value;
             analyzer.setProperties(properties);
         }
 
-        analyzer.connect('{{ analyzer_name }}');
-        analyzer.on('define_properties', function (properties) {
+        /**
+         * @param property_name {string}
+         * @param info {object}
+         */
+        function instantiateControl(property_name, info) {
             const panel = document.getElementById('control_panel');
 
+            let control;
+            switch (info.detail.type) {
+                case "str": {
+                    control = new c5l.StringPropertyControl(
+                        property_name,
+                        info.value,
+                        info.detail,
+                        onChangeValue,
+                    );
+                    break;
+                }
+                case "int": {
+                    control = new c5l.IntegerPropertyControl(
+                        property_name,
+                        info.value,
+                        info.detail,
+                        onChangeValue,
+                    );
+                    break;
+                }
+                case "float": {
+                    control = new c5l.NumberPropertyControl(
+                        property_name,
+                        info.value,
+                        info.detail,
+                        onChangeValue,
+                    );
+                    break;
+                }
+                case "bool": {
+                    control = new c5l.BooleanPropertyControl(
+                        property_name,
+                        info.value,
+                        info.detail,
+                        onChangeValue,
+                    );
+                    break;
+                }
+                default:
+                    throw new Error(`Unknown property type '${info.detail.type}'`);
+            }
+
+            const groupId = 'property_control_group_' + info.detail.group;
+            let groupDiv = document.getElementById(groupId);
+            if (groupDiv == null) {
+                const wrapDiv = document.createElement('div');
+                wrapDiv.classList.add('row');
+                wrapDiv.classList.add('mb-1');
+
+                const textDiv = document.createElement('div');
+                textDiv.textContent = info.detail.group;
+                textDiv.classList.add('form-text');
+                textDiv.classList.add('col-1');
+                wrapDiv.appendChild(textDiv);
+
+                groupDiv = document.createElement('div');
+                groupDiv.id = groupId;
+                groupDiv.classList.add('col-11');
+                groupDiv.classList.add('row');
+                groupDiv.classList.add('row-cols-auto');
+
+                wrapDiv.appendChild(groupDiv);
+                panel.appendChild(wrapDiv);
+            }
+
+            const controlDiv = document.createElement('div');
+            controlDiv.classList.add('col');
+            controlDiv.appendChild(control.element);
+
+            groupDiv.appendChild(controlDiv);
+
+            controls[property_name] = control;
+
+            return control;
+        }
+
+        analyzer.connect('{{ analyzer_name }}');
+        analyzer.on('define_properties', function (properties) {
             for (const property_name in properties) {
-                if (property_name in controls) continue;
-
                 const info = properties[property_name];
-
-
-
                 let control;
-                switch (info.detail.type) {
-                    case "str": {
-                        control = new c5l.StringPropertyControl(
-                            property_name,
-                            info.value,
-                            info.detail,
-                            onChangeValue,
-                        );
-                        break;
-                    }
-                    case "int": {
-                        control = new c5l.IntegerPropertyControl(
-                            property_name,
-                            info.value,
-                            info.detail,
-                            onChangeValue,
-                        );
-                        break;
-                    }
-                    case "float": {
-                        control = new c5l.NumberPropertyControl(
-                            property_name,
-                            info.value,
-                            info.detail,
-                            onChangeValue,
-                        );
-                        break;
-                    }
-                    case "bool": {
-                        control = new c5l.BooleanPropertyControl(
-                            property_name,
-                            info.value,
-                            info.detail,
-                            onChangeValue,
-                        );
-                        break;
-                    }
-                    default:
-                        throw new Error(`Unknown property type '${info.detail.type}'`);
+                if (property_name in controls) {
+                    control = controls[property_name];
+                } else {
+                    control = instantiateControl(property_name, info);
                 }
-
-                const groupId = 'property_control_group_' + info.detail.group;
-                let groupDiv = document.getElementById(groupId);
-                if (groupDiv == null) {
-                    const wrapDiv = document.createElement('div');
-                    wrapDiv.classList.add('row');
-                    wrapDiv.classList.add('mb-1');
-
-                    const textDiv = document.createElement('div');
-                    textDiv.textContent = info.detail.group;
-                    textDiv.classList.add('form-text');
-                    textDiv.classList.add('col-1');
-                    wrapDiv.appendChild(textDiv);
-
-                    groupDiv = document.createElement('div');
-                    groupDiv.id = groupId;
-                    groupDiv.classList.add('col-11');
-                    groupDiv.classList.add('row');
-                    groupDiv.classList.add('row-cols-auto');
-
-                    wrapDiv.appendChild(groupDiv);
-                    panel.appendChild(wrapDiv);
-                }
-
-                const controlDiv = document.createElement('div');
-                controlDiv.classList.add('col');
-                controlDiv.appendChild(control.element);
-
-                groupDiv.appendChild(controlDiv);
-
-                controls[property_name] = control;
+                control.value = info.value;
             }
         });
         analyzer.on('properties', function (properties) {
