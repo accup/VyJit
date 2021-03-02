@@ -25,4 +25,4 @@
 
 
 ## Remarks
-- Currently, all my signal processing developments are contained in the `analyzers` directory, but it would be so ugly for the cloners (when there are). So, I should think about cutting git branch for my developments and the master branch would be maintained as only **enviromnents**.
+- Currently, all my signal processing developments are contained in the `analyzers` directory, but it would be so ugly for the cloners (when there are). So, I should think about cutting git branch for my developments and the master branch would be maintained as only an **enviromnent**.
