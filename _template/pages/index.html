@@ -1,14 +1,10 @@
 {% extends 'layouts/base.html' %}
 
-{% block title %}Index Page{% endblock %}
+{% block title %}Index{% endblock %}
 
 {% block content %}
-<div>
-    Hello
-</div>
-
-<script>
-    window.addEventListener('load', function (event) {
-    });
-</script>
+<h1>All analyzers</h1>
+{% for analyzer_name in analyzer_names %}
+<div><a href='/analyzers/{{ analyzer_name }}'>{{ analyzer_name }}</a></div>
+{% endfor %}
 {% endblock %}
