@@ -9,17 +9,20 @@ class Analyzer (BaseAnalyzer):
     # automatically define the default group (empty string group) at first
 
     # the sample rate of input signals
-    sample_rate = field.float_()
+    sample_rate = field.float_('Sample rate')
     # the length of input signals
-    window_size = field.int_()
+    window_size = field.int_('Window size')
     # the length of the interval between signal clippings
-    frame_step = field.int_()
+    frame_step = field.int_('Frame step')
 
     # define group (in the global scope)
     group('Scaling')
+    # the scale of a spectrum
     scale = field.float_(default=1.0, step=1.0)
     # whether to scale a spectrum or not
-    use_scale = field.bool_('Use scale', default=False)
+    use_scale = field.bool_(default=False)
+    # * When the client-side name is not specified,
+    #   the attribute name will be used instead.
 
     # define another group (in the global scope)
     group('Window')
