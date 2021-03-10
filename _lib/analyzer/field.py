@@ -1,6 +1,6 @@
 from .core import BaseAnalyzer, analyzer_property
 
-from typing import Optional, Callable
+from typing import Any, Optional, Callable
 
 
 class int_property (analyzer_property):
@@ -12,7 +12,7 @@ class int_property (analyzer_property):
         min: Optional[int] = None,
         max: Optional[int] = None,
         step: Optional[int] = None,
-        hook: Callable[[BaseAnalyzer, int], int] = lambda obj, x: x,
+        hook: Callable[[BaseAnalyzer, Any], int] = lambda obj, x: int(x),
     ):
         super().__init__(
             client_name=client_name,
@@ -36,7 +36,7 @@ class float_property (analyzer_property):
         min: Optional[float] = None,
         max: Optional[float] = None,
         step: Optional[float] = None,
-        hook: Callable[[BaseAnalyzer, float], float] = lambda obj, x: x,
+        hook: Callable[[BaseAnalyzer, Any], float] = lambda obj, x: float(x),
     ):
         super().__init__(
             client_name=client_name,
@@ -57,7 +57,7 @@ class str_property (analyzer_property):
         client_name: Optional[str] = None,
         *,
         default: str = '',
-        hook: Callable[[BaseAnalyzer, str], str] = lambda obj, x: x,
+        hook: Callable[[BaseAnalyzer, Any], str] = lambda obj, x: str(x),
     ):
         super().__init__(
             client_name=client_name,
@@ -75,7 +75,7 @@ class bool_property (analyzer_property):
         client_name: Optional[str] = None,
         *,
         default: bool = False,
-        hook: Callable[[BaseAnalyzer, bool], bool] = lambda obj, x: x,
+        hook: Callable[[BaseAnalyzer, Any], bool] = lambda obj, x: bool(x),
     ):
         super().__init__(
             client_name=client_name,

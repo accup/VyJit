@@ -22,7 +22,7 @@ class AnalyzerRoutine:
         )
         parser.add_argument(
             '--default-frame-step', type=int,
-            default=0,
+            default=128,
             help='default signal clipping interval in samples',
         )
         parser.add_argument(

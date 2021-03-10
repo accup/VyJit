@@ -51,18 +51,21 @@ async def signal_analysis(
         for info in info_list:
             try:
                 block_size = block.shape[0]
-                # The buffer and the frame-step must be kept in variables
-                # because they may be changed.
-                buffer = info.buffer
-                buffer_size = buffer.shape[0]
-                frame_step = info.frame_step
-                next_frame = info.next_frame
-                for frame in range(0, block_size, frame_step):
-                    required_length = frame_step - next_frame
+                # This whlie-loop must be as is (not change it into for-loop)
+                # because the frame-step may be changed.
+                frame = 0
+                while frame < block_size:
+                    buffer = info.buffer
+                    buffer_size = buffer.shape[0]
+                    required_length = min(
+                        info.frame_step - info.next_frame,
+                        buffer_size,
+                    )
                     length = min(required_length, block_size - frame)
                     left_length = buffer_size - length
                     buffer[:left_length] = buffer[length:]
                     buffer[left_length:] = block[frame:frame + length]
+
                     if required_length <= length:
                         results = info.analyzer.analyze(np.copy(buffer))
 
@@ -71,10 +74,10 @@ async def signal_analysis(
                             data=numpy_to_bytes(results),
                             room=info.sid,
                         )
-                        next_frame = 0
+                        info.next_frame = 0
                     else:
-                        next_frame += length
-                info.next_frame = next_frame
+                        info.next_frame += length
+                    frame += info.frame_step
             except KeyboardInterrupt:
                 raise
             except Exception:
