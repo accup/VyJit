@@ -11,6 +11,16 @@ from typing import Optional, Sequence
 class AnalyzerRoutine:
     def define_parser(self, parser: ArgumentParser):
         parser.add_argument(
+            '--host', type=str,
+            default='localhost',
+            help='host of the analyzer server',
+        )
+        parser.add_argument(
+            '--port', type=int,
+            default=8080,
+            help='port of the analyzer server',
+        )
+        parser.add_argument(
             '--sample-rate', type=float,
             default=16000.0,
             help='sample rate of input signal in hertz',
@@ -36,6 +46,8 @@ class AnalyzerRoutine:
         )
 
     def setup(self, args: Namespace):
+        self.host = args.host
+        self.port = args.port
         self.sample_rate: float = args.sample_rate
         self.channels: int = args.channels
         self.default_window_size: int = args.default_window_size
@@ -46,8 +58,8 @@ class AnalyzerRoutine:
         try:
             asyncio.run(
                 coroutine.application_main(
-                    host='localhost',
-                    port=8080,
+                    host=self.host,
+                    port=self.port,
                     sample_rate=self.sample_rate,
                     channels=self.channels,
                     default_window_size=self.default_window_size,
