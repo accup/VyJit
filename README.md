@@ -23,6 +23,12 @@
 1. Update some stuff in the `analyzers` directory.
 1. Force-reload the openned page, then the output would be update.
 
+## Error handling
+- When an error message is raised in the analyzer, the message will be displayed in the client side.
 
-## Remarks
-- Currently, all my signal processing developments are contained in the `analyzers` directory, but it would be so ugly for the cloners (when there are). So, I should think about cutting git branch for my developments and the master branch would be maintained as only an **enviromnent**.
+## Logs
+- v1.0.0
+    - Organized the `analyzers` directory.
+    - Fixed some issue.
+- v0.9.9
+    - Implemented the basic features.
