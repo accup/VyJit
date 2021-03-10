@@ -1,7 +1,7 @@
 const d3 = require('d3');
 
 
-interface Color {
+export interface Color {
     r: number,
     g: number,
     b: number,
