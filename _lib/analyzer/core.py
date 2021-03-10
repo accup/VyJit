@@ -38,16 +38,32 @@ class analyzer_property:
         if instance is None:
             return self
 
-        return instance.__dict__.setdefault(self.name, self.default_value)
+        if self.name in instance.__dict__:
+            return instance.__dict__[self.name]['value']
+        else:
+            return self.default_value
 
     def __set__(self, instance: 'BaseAnalyzer', value):
+        if self.name not in instance.__dict__:
+            instance.__dict__[self.name] = {
+                'value': self.default_value,
+                'updating': False
+            }
+        value_dict = instance.__dict__[self.name]
+        if value_dict['updating']:
+            raise RuntimeError(
+                "Recursive update detected in the property {self.name!r}."
+            )
         if all(check(instance, value) for check in self.validate_callbacks):
-            instance.__dict__[self.name] = value
+            value_dict['updating'] = True
+            value_dict['value'] = self.hook(instance, value)
             for callback in self.compute_callbacks:
                 callback(instance)
+            value_dict['updating'] = False
 
     def __call__(self, hook: Callable[['BaseAnalyzer', Any], Any]):
-        self.hook = hook
+        old_hook = self.hook
+        self.hook = lambda obj, x: hook(obj, old_hook(obj, x))
         return self
 
     def compute(self, callback: Callable[['BaseAnalyzer'], Any]):

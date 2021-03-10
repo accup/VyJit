@@ -3,6 +3,7 @@ from aiohttp_jinja2 import render_template
 
 import sys
 import importlib
+import pkgutil
 import traceback
 
 
@@ -11,10 +12,18 @@ routes = web.RouteTableDef()
 
 @routes.get('/')
 async def index(request: web.Request):
+    import analyzers
+    analyzer_names = [
+        name
+        for _, name, _ in pkgutil.walk_packages(analyzers.__path__)
+    ]
+
     return render_template(
         'pages/index.html',
         request=request,
-        context=None,
+        context={
+            'analyzer_names': analyzer_names,
+        },
     )
 
 
