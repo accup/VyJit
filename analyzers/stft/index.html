@@ -4,10 +4,11 @@
 
 {% block visualizer %}
 <div id="visualizer" class="container-fluid">
+    <canvas id="window" width="100" height="500"></canvas>
     <canvas id="spectrogram" width="700" height="500"></canvas>
 </div>
 {% endblock %}
 
 {% block listener %}
-<script src="/analyzers/onset/script.js"></script>
+<script src="/analyzers/stft/script.js"></script>
 {% endblock %}
