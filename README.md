@@ -26,6 +26,9 @@
 ## Error handling
 - When an error message is raised in the analyzer, the message will be displayed in the client side.
 
+## Remarks
+- Currently the available audio input device is only the primary one, which depends on your environment.
+
 ## Logs
 - v1.0.0
     - Organized the `analyzers` directory.
