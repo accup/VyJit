@@ -30,6 +30,10 @@
 - Currently the available audio input device is only the primary one, which depends on your environment.
 
 ## Logs
+- v1.0.1
+    - Suppress the exception for static file routing when the static file directory does not exist.
+    - Add an argument to specify the input device.
+    - [ ] Catch exceptions when the input stream cannot be initialized properly.
 - v1.0.0
     - Organized the `analyzers` directory.
     - Fixed some issue.
