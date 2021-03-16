@@ -2,6 +2,7 @@ from aiohttp import web
 from aiohttp_jinja2 import render_template
 
 import sys
+import os
 import importlib
 import pkgutil
 import traceback
@@ -50,6 +51,9 @@ async def analysis(request: web.Request):
 
 
 # static resources
-routes.static('/analyzers', 'analyzers')
-routes.static('/static', 'static')
-routes.static('/dist', 'dist')
+if os.path.exists('analyzers'):
+    routes.static('/analyzers', 'analyzers')
+if os.path.exists('static'):
+    routes.static('/static', 'static')
+if os.path.exists('dist'):
+    routes.static('/dist', 'dist')
