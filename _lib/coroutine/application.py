@@ -130,6 +130,7 @@ async def application_main(
     port: int,
     sample_rate: float,
     channels: int,
+    device: int,
     default_window_size: int,
     default_frame_step: int,
     skip: bool,
@@ -189,7 +190,7 @@ async def application_main(
             sample_rate=sample_rate,
             channels=channels,
             block_size=0,
-            device=None,
+            device=device,
             dtype=np.float32,
         )
     )
