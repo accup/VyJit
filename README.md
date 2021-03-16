@@ -33,6 +33,7 @@
 - v1.0.1
     - Suppress the exception for static file routing when the static file directory does not exist.
     - Add an argument to specify the input device.
+    - Add an analyzer property that represents the number of input signal channels.
     - [ ] Catch exceptions when the input stream cannot be initialized properly.
 - v1.0.0
     - Organized the `analyzers` directory.
