@@ -36,6 +36,11 @@ def register_handlers(  # noqa: C901
                 if isinstance(prop, analyzer_property):
                     prop.default_value = sample_rate
                     prop.detail['readonly'] = True
+            if hasattr(analyzer_class, 'channels'):
+                prop = analyzer_class.channels
+                if isinstance(prop, analyzer_property):
+                    prop.default_value = channels
+                    prop.detail['readonly'] = True
             if hasattr(analyzer_class, 'window_size'):
                 prop = analyzer_class.window_size
                 if isinstance(prop, analyzer_property):
