@@ -77,7 +77,7 @@ async def signal_analysis(
                         info.next_frame = 0
                     else:
                         info.next_frame += length
-                    frame += info.frame_step
+                    frame += length
             except KeyboardInterrupt:
                 raise
             except Exception:
