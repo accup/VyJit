@@ -77,9 +77,7 @@ async def signal_analysis(
                         info.next_frame = 0
                     else:
                         info.next_frame += length
-                    frame += info.frame_step
-            except KeyboardInterrupt:
-                raise
+                    frame += length
             except Exception:
                 await sio.emit(
                     'internal_error',

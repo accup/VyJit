@@ -10,6 +10,8 @@ class Analyzer (BaseAnalyzer):
 
     # the sample rate of input signals
     sample_rate = field.float_('Sample rate')
+    # the number of channels
+    channels = field.int_('Channels')
     # the length of input signals
     window_size = field.int_('Window size')
     # the length of the interval between signal clippings

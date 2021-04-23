@@ -26,10 +26,14 @@
 ## Error handling
 - When an error message is raised in the analyzer, the message will be displayed in the client side.
 
-## Remarks
-- Currently the available audio input device is only the primary one, which depends on your environment.
-
 ## Logs
+- v1.0.1
+    - Suppress the exception for static file routing when the static file directory does not exist.
+    - Add an built-in analyzer 'waveform'.
+    - Add an argument to specify the input device.
+    - Add an analyzer property `channels` that represents the number of input signal channels.
+    - Fix a problem where the input signal was not being written to the buffer correctly.
+    - Catch exceptions when the input stream cannot be initialized properly.
 - v1.0.0
     - Organized the `analyzers` directory.
     - Fixed some issue.

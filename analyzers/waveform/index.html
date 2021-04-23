@@ -1,0 +1,13 @@
+{% extends 'layouts/analyzer.html' %}
+
+{% block title %}Waveform{% endblock %}
+
+{% block visualizer %}
+<div id="visualizer" class="container-fluid">
+    <canvas id="waveform" width="700" height="100"></canvas>
+</div>
+{% endblock %}
+
+{% block listener %}
+<script src="/analyzers/waveform/script.js"></script>
+{% endblock %}
