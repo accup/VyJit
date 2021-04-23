@@ -14,7 +14,7 @@ from .signal import signal_input, signal_analysis
 
 from .core import AnalyzerInfo
 
-from typing import Dict
+from typing import Dict, Awaitable
 
 
 def register_handlers(  # noqa: C901
@@ -63,8 +63,6 @@ def register_handlers(  # noqa: C901
             analyzer_dict[sid] = analyzer_info
 
             await sio.emit('define_properties', data, room=sid)
-        except KeyboardInterrupt:
-            raise
         except Exception:
             await sio.emit(
                 'internal_error',
@@ -111,8 +109,9 @@ def register_handlers(  # noqa: C901
 async def display_queue_info(
     indata_queue: asyncio.Queue,
     queue_info: Dict[str, int],
+    exception_queue: asyncio.Queue,
 ):
-    while True:
+    while exception_queue.qsize() == 0:
         print(
             '    \r'
             '{} blocks queued, '
@@ -143,6 +142,7 @@ async def application_main(
     loop = asyncio.get_event_loop()
     event = asyncio.Event()
     indata_queue = asyncio.Queue(1 if skip else 0)
+    exception_queue = asyncio.Queue()
     analyzer_dict: Dict[str, AnalyzerInfo] = dict()
     queue_info = {'get': 0, 'skip': 0}
 
@@ -187,28 +187,41 @@ async def application_main(
     site = web.TCPSite(runner, host, port)
     await site.start()
 
+    async def catch_task_exception(awaitable: Awaitable[None]):
+        try:
+            await awaitable
+        except Exception as e:
+            await exception_queue.put(e)
+
     input_task = loop.create_task(
-        signal_input(
-            loop=loop,
-            event=event,
-            put_block=put_block,
-            sample_rate=sample_rate,
-            channels=channels,
-            block_size=0,
-            device=device,
-            dtype=np.float32,
+        catch_task_exception(
+            signal_input(
+                loop=loop,
+                event=event,
+                put_block=put_block,
+                sample_rate=sample_rate,
+                channels=channels,
+                block_size=0,
+                device=device,
+                dtype=np.float32,
+            ),
         )
     )
     analysis_task = loop.create_task(
-        signal_analysis(
-            sio=sio,
-            analyzer_dict=analyzer_dict,
-            get_block=get_block,
+        catch_task_exception(
+            signal_analysis(
+                sio=sio,
+                analyzer_dict=analyzer_dict,
+                get_block=get_block,
+            )
         )
     )
+    # Sleep a short time in order to catch exceptions
+    # from the above tasks immediately.
+    await asyncio.sleep(0.1)
 
     try:
-        await display_queue_info(indata_queue, queue_info)
+        await display_queue_info(indata_queue, queue_info, exception_queue)
     finally:
         while not indata_queue.empty():
             indata_queue.get_nowait()
@@ -216,3 +229,6 @@ async def application_main(
         event.set()
         await asyncio.wait([input_task, analysis_task])
         await runner.cleanup()
+
+    if not exception_queue.empty():
+        raise exception_queue.get_nowait()

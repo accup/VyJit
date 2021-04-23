@@ -33,7 +33,7 @@
     - Add an argument to specify the input device.
     - Add an analyzer property `channels` that represents the number of input signal channels.
     - Fix a problem where the input signal was not being written to the buffer correctly.
-    - [ ] Catch exceptions when the input stream cannot be initialized properly.
+    - Catch exceptions when the input stream cannot be initialized properly.
 - v1.0.0
     - Organized the `analyzers` directory.
     - Fixed some issue.
