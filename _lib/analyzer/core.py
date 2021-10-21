@@ -1,49 +1,73 @@
+import abc
 import numpy as np
 
 from ..util.convert import ConvertibleType
-from typing import Any, Optional, Iterable, Callable, Tuple, List, Dict
+from typing import (Any, Callable, Dict, Generic, Iterable, List, Optional,
+                    Tuple, Type, TypeVar, overload)
+
+
+T = TypeVar('T')
+U = TypeVar('U')
 
 
 GLOBAL_GROUP = ''
 
 
-class analyzer_property:
+class analyzer_property (Generic[T]):
     def __init__(
         self,
         client_name: Optional[str] = None,
+        display_name: Optional[str] = None,
         *,
-        default,
+        default: T,
         detail: Optional[Dict[str, ConvertibleType]] = None,
         hook: Callable[['BaseAnalyzer', Any], Any] = lambda obj, x: x,
     ):
         self.client_name = client_name
+        self.display_name = display_name
         self.default_value = default
         self.hook = hook
         self.detail = {} if detail is None else detail
-        self.compute_callbacks: List[
-            Callable[['BaseAnalyzer'], Any]
-        ] = []
-        self.validate_callbacks: List[
-            [Callable[['BaseAnalyzer', Any], bool]]
-        ] = []
+        self.compute_callbacks: List[Callable[['BaseAnalyzer'], Any]] = []
+        self.validate_callbacks: List[Callable[['BaseAnalyzer', T], bool]] = []
 
         self.detail['group'] = GLOBAL_GROUP
 
     def __set_name__(self, owner, name: str):
         if self.client_name is None:
             self.client_name = name
+        if self.display_name is None:
+            self.display_name = self.client_name
         self.name = name
+        self.detail['display_name'] = self.display_name
 
-    def __get__(self, instance: 'BaseAnalyzer', owner=None):
+    @overload
+    def __get__(
+        self,
+        instance: None,
+        owner=None,
+    ) -> 'Type[analyzer_property[T]]':
+        ...
+
+    @overload
+    def __get__(
+        self,
+        instance: 'BaseAnalyzer',
+        owner=None,
+    ) -> T:
+        ...
+
+    def __get__(self, instance, owner=None):
         if instance is None:
             return self
 
         if self.name in instance.__dict__:
-            return instance.__dict__[self.name]['value']
+            value: T = instance.__dict__[self.name]['value']
         else:
-            return self.default_value
+            value = self.default_value
+        return value
 
-    def __set__(self, instance: 'BaseAnalyzer', value):
+    def __set__(self, instance: 'BaseAnalyzer', value: T):
         if self.name not in instance.__dict__:
             instance.__dict__[self.name] = {
                 'value': self.default_value,
@@ -51,9 +75,8 @@ class analyzer_property:
             }
         value_dict = instance.__dict__[self.name]
         if value_dict['updating']:
-            raise RuntimeError(
-                "Recursive update detected in the property {self.name!r}."
-            )
+            raise RuntimeError("Recursive update detected in the property "
+                               "{!r}.".format(self.name))
         if all(check(instance, value) for check in self.validate_callbacks):
             value_dict['updating'] = True
             value_dict['value'] = self.hook(instance, value)
@@ -66,16 +89,22 @@ class analyzer_property:
         self.hook = lambda obj, x: hook(obj, old_hook(obj, x))
         return self
 
-    def compute(self, callback: Callable[['BaseAnalyzer'], Any]):
+    def compute(
+        self,
+        callback: Callable[['BaseAnalyzer'], U],
+    ) -> Callable[['BaseAnalyzer'], U]:
         self.compute_callbacks.append(callback)
         return callback
 
-    def validate(self, callback: Callable[['BaseAnalyzer', Any], bool]):
+    def validate(
+        self,
+        callback: Callable[['BaseAnalyzer', T], bool],
+    ) -> Callable[['BaseAnalyzer', T], bool]:
         self.validate_callbacks.append(callback)
         return callback
 
 
-class AnalyzerMeta (type):
+class AnalyzerMeta (abc.ABCMeta):
     def __init__(
         cls,
         name: str,
@@ -84,14 +113,18 @@ class AnalyzerMeta (type):
     ):
         super().__init__(name, bases, namespace)
 
-        cls._properties: Dict[str, str] = dict()
+        cls._analyzer_properties: Dict[str, str] = dict()
 
         for base in bases:
-            cls._properties.update(base._properties)
+            if not isinstance(base, AnalyzerMeta):
+                raise TypeError("The base class of the analyzer class "
+                                "must be an analyzer class.")
+            cls._analyzer_properties.update(base._analyzer_properties)
 
-        for name, value in namespace.items():
-            if isinstance(value, analyzer_property):
-                cls._properties[value.client_name] = value.name
+        for key, value in namespace.items():
+            if isinstance(value, analyzer_property) and \
+                    value.client_name is not None:
+                cls._analyzer_properties[value.client_name] = key
 
         global GLOBAL_GROUP
         GLOBAL_GROUP = ''
@@ -101,18 +134,18 @@ class BaseAnalyzer (metaclass=AnalyzerMeta):
     def analyze(self, signal: np.ndarray):
         raise NotImplementedError
 
+    def get_property_name(self, client_name: str):
+        return type(self)._analyzer_properties[client_name]
+
     def get_client_properties(
         self,
         client_names: Optional[Iterable[str]] = None,
     ):
         if client_names is None:
-            client_names = type(self)._properties.keys()
+            client_names = type(self)._analyzer_properties.keys()
 
         return {
-            client_name: getattr(
-                self,
-                type(self)._properties[client_name],
-            )
+            client_name: getattr(self, self.get_property_name(client_name))
             for client_name in client_names
         }
 
@@ -121,17 +154,17 @@ class BaseAnalyzer (metaclass=AnalyzerMeta):
         client_names: Optional[Iterable[str]] = None,
     ):
         if client_names is None:
-            client_names = type(self)._properties.keys()
+            client_names = type(self)._analyzer_properties.keys()
 
         return {
             client_name: {
                 'value': getattr(
                     self,
-                    type(self)._properties[client_name],
+                    self.get_property_name(client_name),
                 ),
                 'detail': getattr(
                     type(self),
-                    type(self)._properties[client_name],
+                    self.get_property_name(client_name),
                 ).detail,
             }
             for client_name in client_names

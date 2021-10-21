@@ -3,10 +3,11 @@ from .core import BaseAnalyzer, analyzer_property
 from typing import Any, Optional, Callable
 
 
-class int_property (analyzer_property):
+class int_property (analyzer_property[int]):
     def __init__(
         self,
         client_name: Optional[str] = None,
+        display_name: Optional[str] = None,
         *,
         default: int = 0,
         min: Optional[int] = None,
@@ -16,6 +17,7 @@ class int_property (analyzer_property):
     ):
         super().__init__(
             client_name=client_name,
+            display_name=display_name,
             default=default,
             detail={
                 'type': 'int',
@@ -27,10 +29,11 @@ class int_property (analyzer_property):
         )
 
 
-class float_property (analyzer_property):
+class float_property (analyzer_property[float]):
     def __init__(
         self,
         client_name: Optional[str] = None,
+        display_name: Optional[str] = None,
         *,
         default: float = 0.0,
         min: Optional[float] = None,
@@ -40,6 +43,7 @@ class float_property (analyzer_property):
     ):
         super().__init__(
             client_name=client_name,
+            display_name=display_name,
             default=default,
             detail={
                 'type': 'float',
@@ -51,16 +55,18 @@ class float_property (analyzer_property):
         )
 
 
-class str_property (analyzer_property):
+class str_property (analyzer_property[str]):
     def __init__(
         self,
         client_name: Optional[str] = None,
+        display_name: Optional[str] = None,
         *,
         default: str = '',
         hook: Callable[[BaseAnalyzer, Any], str] = lambda obj, x: str(x),
     ):
         super().__init__(
             client_name=client_name,
+            display_name=display_name,
             default=default,
             detail={
                 'type': 'str',
@@ -69,16 +75,18 @@ class str_property (analyzer_property):
         )
 
 
-class bool_property (analyzer_property):
+class bool_property (analyzer_property[bool]):
     def __init__(
         self,
         client_name: Optional[str] = None,
+        display_name: Optional[str] = None,
         *,
         default: bool = False,
         hook: Callable[[BaseAnalyzer, Any], bool] = lambda obj, x: bool(x),
     ):
         super().__init__(
             client_name=client_name,
+            display_name=display_name,
             default=default,
             detail={
                 'type': 'bool',

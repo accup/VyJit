@@ -11,6 +11,7 @@ import importlib
 import traceback
 
 from _lib.analyzer import analyzer_property
+from _lib.analyzer.core import AnalyzerMeta, BaseAnalyzer
 from .signal import signal_input, signal_analysis
 
 from .core import AnalyzerInfo
@@ -21,7 +22,7 @@ from typing import Dict, Awaitable
 def register_handlers(  # noqa: C901
     sio: socketio.AsyncServer,
     analyzer_dict: Dict[str, AnalyzerInfo],
-    sample_rate: int,
+    sample_rate: float,
     channels: int,
     default_window_size: int,
     default_frame_step: int,
@@ -31,27 +32,29 @@ def register_handlers(  # noqa: C901
         analyzer_module_name = 'analyzers.{}'.format(name)
         try:
             analyzer_module = importlib.import_module(analyzer_module_name)
-            analyzer_class = analyzer_module.Analyzer
-            if hasattr(analyzer_class, 'sample_rate'):
-                prop = analyzer_class.sample_rate
-                if isinstance(prop, analyzer_property):
-                    prop.default_value = sample_rate
-                    prop.detail['readonly'] = True
-            if hasattr(analyzer_class, 'channels'):
-                prop = analyzer_class.channels
-                if isinstance(prop, analyzer_property):
-                    prop.default_value = channels
-                    prop.detail['readonly'] = True
-            if hasattr(analyzer_class, 'window_size'):
-                prop = analyzer_class.window_size
-                if isinstance(prop, analyzer_property):
-                    prop.default_value = default_window_size
-            if hasattr(analyzer_class, 'frame_step'):
-                prop = analyzer_class.frame_step
-                if isinstance(prop, analyzer_property):
-                    prop.default_value = default_frame_step
+            analyzer_class = None
+            for value in vars(analyzer_module).values():
+                if isinstance(value, AnalyzerMeta):
+                    analyzer_class = value
+            if analyzer_class is None:
+                return
 
-            analyzer = analyzer_class()
+            prop = getattr(analyzer_class, 'sample_rate', None)
+            if isinstance(prop, analyzer_property):
+                prop.default_value = sample_rate
+                prop.detail['readonly'] = True
+            prop = getattr(analyzer_class, 'channels', None)
+            if isinstance(prop, analyzer_property):
+                prop.default_value = channels
+                prop.detail['readonly'] = True
+            prop = getattr(analyzer_class, 'window_size', None)
+            if isinstance(prop, analyzer_property):
+                prop.default_value = default_window_size
+            prop = getattr(analyzer_class, 'frame_step', None)
+            if isinstance(prop, analyzer_property):
+                prop.default_value = default_frame_step
+
+            analyzer: BaseAnalyzer = analyzer_class()
             data = analyzer.get_client_property_details()
 
             analyzer_info = AnalyzerInfo(
@@ -82,7 +85,7 @@ def register_handlers(  # noqa: C901
         for name, value in properties.items():
             if value is None:
                 continue
-            attr_name = type(info.analyzer)._properties[name]
+            attr_name = info.analyzer.get_property_name(name)
             if attr_name == 'window_size':
                 if not isinstance(value, int):
                     continue

@@ -6,6 +6,10 @@ interface IPropertyControl<T> {
     value: T | null;
 }
 
+type PropertyDetail = {
+    readonly display_name: string;
+}
+
 
 abstract class PropertyControl<T> implements IPropertyControl<T> {
     _name: string;
@@ -32,7 +36,7 @@ export class StringPropertyControl extends PropertyControl<string> {
     constructor(
         name: string,
         value: string,
-        detail: { readonly?: boolean },
+        detail: PropertyDetail & { readonly?: boolean },
         onChange: (control: StringPropertyControl) => any,
     ) {
         super(name);
@@ -56,7 +60,7 @@ export class StringPropertyControl extends PropertyControl<string> {
             const label = document.createElement('label');
             label.classList.add('form-label');
             label.htmlFor = inputId;
-            label.textContent = name;
+            label.textContent = detail.display_name;
             control.appendChild(label);
         }
 
@@ -85,7 +89,7 @@ export class NumberPropertyControl extends PropertyControl<number> {
     constructor(
         name: string,
         value: number,
-        detail: { readonly?: boolean, min: number | null, max: number | null, step: number | null },
+        detail: PropertyDetail & { readonly?: boolean, min: number | null, max: number | null, step: number | null },
         onChange: (control: NumberPropertyControl) => any,
     ) {
         super(name);
@@ -112,7 +116,7 @@ export class NumberPropertyControl extends PropertyControl<number> {
             const label = document.createElement('label');
             label.classList.add('form-label');
             label.htmlFor = inputId;
-            label.textContent = name;
+            label.textContent = detail.display_name;
             control.appendChild(label);
         }
 
@@ -142,13 +146,14 @@ export class IntegerPropertyControl extends NumberPropertyControl {
     constructor(
         name: string,
         value: number,
-        detail: { readonly?: boolean, min: number | null, max: number | null, step: number | null },
+        detail: PropertyDetail & { readonly?: boolean, min: number | null, max: number | null, step: number | null },
         onChange: (control: IntegerPropertyControl) => any,
     ) {
         super(
             name,
             value,
             {
+                display_name: detail.display_name,
                 readonly: detail.readonly,
                 min: (detail.min == null) ? null : Math.floor(detail.min),
                 max: (detail.max == null) ? null : Math.ceil(detail.max),
@@ -181,7 +186,7 @@ export class BooleanPropertyControl extends PropertyControl<boolean> {
     constructor(
         name: string,
         value: boolean,
-        detail: { readonly?: boolean },
+        detail: PropertyDetail & { readonly?: boolean },
         onChange: (control: BooleanPropertyControl) => any,
     ) {
         super(name);
@@ -205,7 +210,7 @@ export class BooleanPropertyControl extends PropertyControl<boolean> {
             const label = document.createElement('label');
             label.classList.add('form-check-label');
             label.htmlFor = inputId;
-            label.textContent = name;
+            label.textContent = detail.display_name;
             control.appendChild(label);
         }
 
