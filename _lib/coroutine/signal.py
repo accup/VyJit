@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import DTypeLike
 import sounddevice as sd
 
 import socketio
@@ -21,7 +22,7 @@ async def signal_input(
     channels: int,
     block_size: int = 0,
     device: Optional[Union[int, str]] = None,
-    dtype: np.dtype = np.float32,
+    dtype: DTypeLike = np.float32,
 ):
     def callback(indata: np.ndarray, frames, time, status):
         loop.call_soon_threadsafe(put_block, indata.copy())

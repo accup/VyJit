@@ -11,9 +11,10 @@ from typing import Optional, Sequence
 
 
 def get_input_devices():
+    device_list: Sequence[dict] = sd.query_devices()  # type: ignore
     return [
         (device_id, device_dict)
-        for device_id, device_dict in enumerate(sd.query_devices())
+        for device_id, device_dict in enumerate(device_list)
         if 0 < device_dict['max_input_channels']
     ]
 

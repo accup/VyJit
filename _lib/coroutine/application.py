@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import DTypeLike
 
 import socketio
 from aiohttp import web
@@ -24,7 +25,7 @@ def register_handlers(  # noqa: C901
     channels: int,
     default_window_size: int,
     default_frame_step: int,
-    dtype: np.dtype = np.float32,
+    dtype: DTypeLike = np.float32,
 ):
     async def on_start_analysis(sid: str, name: str):
         analyzer_module_name = 'analyzers.{}'.format(name)
