@@ -1,5 +1,4 @@
 import numpy as np
-import scipy as sp
 import scipy.signal
 
 from _lib.analyzer import BaseAnalyzer, group, field
@@ -53,7 +52,7 @@ class Analyzer (BaseAnalyzer):
     @window_size.compute
     @window_name.compute
     def update_window(self):
-        self.window = sp.signal.get_window(
+        self.window = scipy.signal.get_window(
             self.window_name,
             self.window_size,
         )
