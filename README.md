@@ -27,6 +27,16 @@
 - When an error message is raised in the analyzer, the message will be displayed in the client side.
 
 ## Logs
+- v1.1.0
+    - [ ] Add a built-in field 'field.select' to select a value or values from the choices.
+    - [ ] Add a source selector to select a signal source from available sources (Microphones or audio files).
+    - Add the second argument into every analyzer_property constructor to specify a client-side display name.
+    - Make a change to every `index.html` file to use the interpolation `{{ analyzer_name }}` to specify the name of the analyzer directory. This might have been able to be used from the v0.9.9.
+    - [ ] Optimize the property update routine so that property update events are dispatched after all property setting events have been processed.
+    - Make the conversion between Python data and JavaScript data more strict.
+    - Optimize some type annotations.
+    - Update Python packages.
+    - Update NPM packages.
 - v1.0.1
     - Suppress the exception for static file routing when the static file directory does not exist.
     - Add an built-in analyzer 'waveform'.
